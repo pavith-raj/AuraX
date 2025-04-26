@@ -23,23 +23,46 @@ export default function TabLayout() {
           display : 'none',
         },
       }}>
-
-      <Tabs.Screen
-        name="index"
+     <Tabs.Screen
+        name="appointments"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Appointments',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
         }}
       />
 
-       <Tabs.Screen
-        name="salons"
+      <Tabs.Screen
+        name="products"
         options={{
-          title: 'salons',
-          tabBarLabel: 'salons',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="scissors" color={color} />,
+          title: 'Products',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="cart.fill" color={color} />,
         }}
-      /> 
+      />
+
+      <Tabs.Screen
+        name="queue"
+        options={{
+          title: 'Queue',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="book"
+        options={{
+          title: 'Book',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar.badge.plus" color={color} />,
+        }}
+      />
+      
     </Tabs>
   );
 }

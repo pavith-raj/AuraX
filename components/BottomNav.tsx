@@ -11,11 +11,11 @@ export default function BottomNav({ activeTab}:BottomNavBarProps) {
 
   return (
     <View style={styles.navBar}>
-      <TouchableOpacity onPress={() => router.push('/home')} style={styles.navButton}>
+      <TouchableOpacity onPress={() => router.push('/user/home')} style={styles.navButton}>
         <Feather name="home" size={24} color={activeTab === 'home' ? '#A65E5E' : '#777'} />
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push('/salons/salonslist')} style={styles.navButton}>
+      <TouchableOpacity onPress={() => router.push('/user/salons/salonslist')} style={styles.navButton}>
         <MaterialIcons name="storefront" size={24} color={activeTab === 'salons' ? '#A65E5E' : '#777'} />
       </TouchableOpacity>
 
