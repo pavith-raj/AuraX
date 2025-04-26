@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/AuraX-icon.png",
-    "scheme": "myapp",
+  
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -13,7 +13,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/AuraX-icon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.pavith_raj.aurax"
@@ -21,23 +21,22 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/AuraX-icon.png"
     },
     "splash": {
-      "image": "./assets/images/AuraX FlashScreen.png",
+      "image": "./assets/images/AuraXFlashScreen.png",
       "resizeMode": "contain",
       "backgroundColor": "#EAD8D8"
     },
     "plugins": [
       "expo-router"
     ],
-    "experiments": {
-      "typedRoutes": true
-    },
     "extra": {
       "router": {
-        "origin": false
+        // "origin": "expo"
       },
+      "expoClientUrl": "http://localhost",
+
       "eas": {
         "projectId": "333e663e-ee1c-4766-973e-9b8ec89eb366"
       }

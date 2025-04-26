@@ -3,38 +3,38 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect,useState } from 'react';
+import { useEffect, useState, useCallback } from 'react'; // Import useCallback
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/hooks/useColorScheme';
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
+// Prevent the splash screen from auto-hiding BEFORE asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [loaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({ // Get both loaded status and error
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  const [appIsReady, setAppIsReady] = useState(false);
+  
   const [isLoggedIn, setIsLoggedIn] = useState(false); // fake login status
 
   useEffect(() => {
-    async function prepare(){
-      if (loaded){
-        await new Promise(resolve => setTimeout(resolve,2000));
+    async function hideSplash() {
+
+      if (fontsLoaded || fontError) {
         await SplashScreen.hideAsync();
-        setAppIsReady(true);
       }
-    };
+    }
 
-    prepare();
-    },[loaded]);
+    hideSplash();
+  }, [fontsLoaded, fontError]); // Depend on both loaded status and error
 
-  if (!appIsReady) {
-    return null;
+  // Render null if fonts are still loading AND there's no error
+  if (!fontsLoaded && !fontError) {
+    return null; // Keep showing the native splash
   }
 
+  // If fonts are loaded or there was an error, render the main app
   return (
     <ThemeProvider value={ DefaultTheme }>
       <Stack initialRouteName={isLoggedIn ? '(tabs)' : 'login'}>

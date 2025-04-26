@@ -4,10 +4,12 @@ import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView } from 'rea
 import { useRouter } from 'expo-router';
 import { SafeAreaView, StatusBar } from 'react-native';
 import { Feather, MaterialIcons, FontAwesome } from '@expo/vector-icons'; // You can also use Ionicons, FontAwesome, etc.
+import BottomNavBar from '../../components/BottomNav';  // adjust the path if needed
 
 
 export default function HomePage() {
   const router = useRouter();
+  
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#EAD8D8' }}>
@@ -103,23 +105,7 @@ export default function HomePage() {
     </ScrollView>
 
       {/* Bottom Navigation Bar */}
-      <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => router.push('/home')} style={styles.navButton}>
-          <Feather name="home" size={20} color="#A65E5E" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push('/salons')} style={styles.navButton}>
-          <MaterialIcons name="storefront" size={20} color="#A65E5E" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push('/products')} style={styles.navButton}>
-          <Feather name="shopping-bag" size={20} color="#A65E5E" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push('/appointments')} style={styles.navButton}>
-          <Feather name="calendar" size={20} color="#A65E5E" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push('/profile')} style={styles.navButton}>
-          <Feather name="user" size={20} color="#A65E5E" />
-        </TouchableOpacity>
-      </View>
+      <BottomNavBar activeTab="home" />
     </SafeAreaView>
   );
 }
@@ -140,6 +126,14 @@ const styles = StyleSheet.create({
   logo: {
     width: 40,
     height: 40,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    padding: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3, // for Android
   },
   searchBar: {
     flex: 1,
@@ -306,4 +300,7 @@ const styles = StyleSheet.create({
   //   fontWeight: 'bold',
   //   color: '#3B3B3B',
   // },
+  scrollContent: {
+    paddingBottom: 100, // adjust this to make room for bottom nav
+  },
 });
