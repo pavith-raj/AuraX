@@ -7,5 +7,5 @@ export default function Index() {
   //   return <Redirect href="/login" />;
   // }
 
-  return <Redirect href="/@user/home" />; // Adjust path based on your app structure
+  return <Redirect href="/user" />; // Adjust path based on your app structure
 }

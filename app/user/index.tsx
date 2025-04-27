@@ -3,14 +3,11 @@ import { TextInput } from 'react-native';
 import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, StatusBar } from 'react-native';
-import { Feather, MaterialIcons, FontAwesome } from '@expo/vector-icons'; // You can also use Ionicons, FontAwesome, etc.
+import { Feather } from '@expo/vector-icons'; // You can also use Ionicons, FontAwesome, etc.
 import BottomNavBar from '../../components/BottomNav';  // adjust the path if needed
-import { Stack } from 'expo-router';
-
 
 export default function HomePage() {
   const router = useRouter();
-
 
   return (
     <>

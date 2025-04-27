@@ -3,8 +3,9 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState, useCallback } from 'react'; // Import useCallback
+import { useEffect, useState } from 'react'; // Import useCallback
 import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 
 // Prevent the splash screen from auto-hiding BEFORE asset loading is complete.
@@ -36,8 +37,9 @@ export default function RootLayout() {
 
   // If fonts are loaded or there was an error, render the main app
   return (
+    <SafeAreaProvider>
     <ThemeProvider value={ DefaultTheme }>
-      <Stack initialRouteName={isLoggedIn ? '(tabs)' : 'auth/login'}>
+        <Stack initialRouteName={isLoggedIn ? '(tabs)' : 'auth/login'} screenOptions={{ headerShown: false }}>
         <Stack.Screen name="auth/login" options={{ headerShown: false }} />
         <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -45,5 +47,7 @@ export default function RootLayout() {
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
+    </SafeAreaProvider>
+    
   );
 }

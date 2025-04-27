@@ -62,7 +62,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar.badge.plus" color={color} />,
         }}
       />
-      
     </Tabs>
   );
 }

@@ -11,7 +11,7 @@ export default function BottomNav({ activeTab}:BottomNavBarProps) {
 
   return (
     <View style={styles.navBar}>
-      <TouchableOpacity onPress={() => router.push('/user/home')} style={styles.navButton}>
+      <TouchableOpacity onPress={() => router.push('user')} style={styles.navButton}>
         <Feather name="home" size={24} color={activeTab === 'home' ? '#A65E5E' : '#777'} />
       </TouchableOpacity>
 
