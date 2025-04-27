@@ -37,9 +37,9 @@ export default function RootLayout() {
   // If fonts are loaded or there was an error, render the main app
   return (
     <ThemeProvider value={ DefaultTheme }>
-      <Stack initialRouteName={isLoggedIn ? '(tabs)' : 'login'}>
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="signup" options={{ headerShown: false }} />
+      <Stack initialRouteName={isLoggedIn ? '(tabs)' : 'auth/login'}>
+        <Stack.Screen name="auth/login" options={{ headerShown: false }} />
+        <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>

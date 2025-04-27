@@ -5,13 +5,15 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView, StatusBar } from 'react-native';
 import { Feather, MaterialIcons, FontAwesome } from '@expo/vector-icons'; // You can also use Ionicons, FontAwesome, etc.
 import BottomNavBar from '../../components/BottomNav';  // adjust the path if needed
+import { Stack } from 'expo-router';
 
 
 export default function HomePage() {
   const router = useRouter();
-  
+
 
   return (
+    <>
     <SafeAreaView style={{ flex: 1, backgroundColor: '#EAD8D8' }}>
     <StatusBar backgroundColor="#EAD8D8" barStyle="dark-content" />
 
@@ -107,6 +109,7 @@ export default function HomePage() {
       {/* Bottom Navigation Bar */}
       <BottomNavBar activeTab="home" />
     </SafeAreaView>
+    </>
   );
 }
 
