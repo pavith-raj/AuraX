@@ -1,29 +1,29 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/user'); // Import your User model
 
-const authMiddleware = (req, res, next) => {
-    // Get token from Authorization header
-    const authHeader = req.headers.authorization;
+exports.protect = async (req, res, next) => {
+    let token;
 
-    if (!authHeader) {
-        return res.status(401).json({ message: 'No token provided' });
+    // Check if Authorization header exists and starts with Bearer
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        try {
+            // Extract token
+            token = req.headers.authorization.split(' ')[1];
+
+            // Verify token
+            const decoded = jwt.verify(token, process.env.JWT_SECRET); // ✅ use env variable
+
+            // Find user from database, exclude password
+            req.user = await User.findById(decoded.id).select('-password');
+
+            next(); // move to next middleware/route
+        } catch (error) {
+            console.error(error);
+            res.status(401).json({ message: 'Not authorized, token failed' });
+        }
     }
-
-    // Format should be: Bearer <token>
-    const token = authHeader.split(' ')[1];
 
     if (!token) {
-        return res.status(401).json({ message: 'Invalid token format' });
-    }
-
-    try {
-        // Verify the token
-        const decoded = jwt.verify(token, 'your_jwt_secret_key'); // Same secret key as login
-        req.user = decoded; // add user info to request
-        next(); // Allow access to route
-    } catch (error) {
-        console.error(error);
-        res.status(401).json({ message: 'Invalid token' });
+        res.status(401).json({ message: 'Not authorized, no token' });
     }
 };
-
-module.exports = authMiddleware;
