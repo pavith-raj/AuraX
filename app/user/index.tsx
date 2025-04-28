@@ -17,7 +17,7 @@ export default function HomePage() {
       {/* Header */}
       <View style={styles.header}>
         <Image
-          source={require('../../assets/images/AuraX-icon.png')} // Add your logo
+          source={require('../../assets/images/AuraX-icon.png')} // logo
           style={styles.logo}
         />
         <TextInput
@@ -34,13 +34,17 @@ export default function HomePage() {
       <View style={styles.bookingSection}>
         <Text style={styles.sectionTitle}>Book Your Service</Text>
         <View style={styles.serviceCategories}>
+          
           <TouchableOpacity style={styles.categoryCard}>
+          <Feather name="scissors" size={28} color="#A65E5E" />
             <Text style={styles.categoryText}>Haircuts</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.categoryCard}>
+          <Feather name="smile" size={28} color="#A65E5E" />
             <Text style={styles.categoryText}>Facials</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.categoryCard}>
+          <Feather name="heart" size={28} color="#A65E5E" />
             <Text style={styles.categoryText}>Manicures</Text>
           </TouchableOpacity>
         </View>
@@ -55,14 +59,16 @@ export default function HomePage() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.aiCards}>
             <View style={styles.aiCard}>
-              <Text style={styles.aiCardTitle}>Hairstyle Suggestions</Text>
-              {/* AI Image or Sample Hairstyle */}
-              {/* <Image source={require('../assets/images/hairstyle.png')} style={styles.aiImage} /> */}
+            <Image source={require('../../assets/images/hairstyle2.jpg')} style={styles.aiImage} />
+              <View style={styles.overlay}>
+                <Text style={styles.aiCardTitle}>Hairstyle Suggestions</Text>
+              </View>
             </View>
             <View style={styles.aiCard}>
-              <Text style={styles.aiCardTitle}>Personalized Products</Text>
-              {/* AI Image or Sample Product */}
-              {/* <Image source={require('../assets/images/cosmetic.png')} style={styles.aiImage} /> */}
+            <Image source={require('../../assets/images/cosmetic.jpg')} style={styles.aiImage} />
+              <View style={styles.overlay}>
+                <Text style={styles.aiCardTitle}>Personalized Products</Text>
+              </View>
             </View>
           </View>
         </ScrollView>
@@ -80,27 +86,56 @@ export default function HomePage() {
         <Text style={styles.sectionTitle}>Featured Salons</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.salonsContainer}>
-            <View style={styles.salonCard}>
-              {/* <Image source={require('../assets/images/salon1.jpg')} style={styles.salonImage} /> */}
-              <Text style={styles.salonName}>Salon A</Text>
-              <Text style={styles.salonRating}>⭐⭐⭐⭐☆</Text>
+          <View style={styles.salonCard}>
+            <Image source={require('../../assets/images/salon1.jpg')} style={styles.salonImage} />
+              <View style={styles.salonInfo}>
+                <Text style={styles.salonName}>Glamour Hub</Text>
+                <Text style={styles.salonLocation}>Kadri, Mangalore</Text>
+                <View style={styles.ratingRow}>
+                  <Text style={styles.salonRating}>⭐⭐⭐⭐☆</Text>
+                  <Text style={styles.reviewCount}>(120)</Text>
+                </View>
+                <TouchableOpacity style={styles.bookButton} onPress={() => router.push('/book')}>
+                  <Text style={styles.bookButtonText}>Book Now</Text>
+                </TouchableOpacity>
+              </View>
             </View>
             <View style={styles.salonCard}>
-              {/* <Image source={require('../assets/images/salon2.jpg')} style={styles.salonImage} /> */}
-              <Text style={styles.salonName}>Salon B</Text>
-              <Text style={styles.salonRating}>⭐⭐⭐⭐⭐</Text>
+              <Image source={require('../../assets/images/salon2.jpg')} style={styles.salonImage} />
+              <View style={styles.salonInfo}>
+                <Text style={styles.salonName}>Elite Salonb</Text>
+                <Text style={styles.salonLocation}>Kadri, Mangalore</Text>
+                <View style={styles.ratingRow}>
+                  <Text style={styles.salonRating}>⭐⭐⭐⭐⭐</Text>
+                  <Text style={styles.reviewCount}>(120)</Text>
+                </View>
+                <TouchableOpacity style={styles.bookButton} onPress={() => router.push('/book')}>
+                  <Text style={styles.bookButtonText}>Book Now</Text>
+                </TouchableOpacity>
+              </View>
             </View>
+
           </View>
         </ScrollView>
       </View>
       
-      {/* Promotions */}
-      <View style={styles.promotions}>
-        <Text style={styles.promotionTitle}>Limited Time Offers</Text>
-        <View style={styles.promotionBanner}>
-          <Text style={styles.promotionText}>50% OFF on First Booking!</Text>
+    {/* Promotions */}
+    <View style={styles.promotions}>
+      <Text style={styles.promotionTitle}>Limited Time Offers</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View style={styles.promotionCards}>
+          <View style={styles.promotionCard}>
+            <Image source={require('../../assets/images/offer1.jpg')} style={styles.promotionImage} />
+            <Text style={styles.promotionText}>50% OFF on First Booking!</Text>
+          </View>
+          <View style={styles.promotionCard}>
+            <Image source={require('../../assets/images/offer2.jpg')} style={styles.promotionImage} />
+            <Text style={styles.promotionText}>Free Hair Spa on ₹999+</Text>
+          </View>
         </View>
-      </View>
+      </ScrollView>
+    </View>
+
     </ScrollView>
 
       {/* Bottom Navigation Bar */}
@@ -163,22 +198,33 @@ const styles = StyleSheet.create({
   },
   serviceCategories: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
+  
   categoryCard: {
     backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 12,
     flex: 1,
-    margin: 4,
+    marginHorizontal: 6,
+    marginVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4, // For Android
   },
+  
   categoryText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color:'#3B3B3B ',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#A65E5E',
   },
+  
   bookNowButton: {
     backgroundColor: '#A65E5E',
     padding: 12,
@@ -196,27 +242,44 @@ const styles = StyleSheet.create({
   aiCards: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  
   },
   aiCard: {
-    backgroundColor: '#fff',
-
-    borderRadius: 8,
-    padding: 16,
-    flex: 1,
-    margin: 4,
+    width: 160,
+    height: 160,
+    marginRight: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+    position: 'relative',
+  },
+  
+  aiCardTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  aiImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  overlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)', // semi-transparent dark overlay
     alignItems: 'center',
     justifyContent: 'center',
   },
-  aiCardTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  aiImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-  },
+  
   queueSection: {
     padding: 16,
   },
@@ -236,6 +299,7 @@ const styles = StyleSheet.create({
   salonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
   },
   salonCard: {
     backgroundColor: '#fff',
@@ -243,6 +307,13 @@ const styles = StyleSheet.create({
     padding: 16,
     width: 150,
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+    position: 'relative',
   },
   salonImage: {
     width: '100%',
@@ -258,6 +329,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FF6347',
   },
+  salonInfo: {
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  
+  salonLocation: {
+    fontSize: 12,
+    color: '#777',
+  },
+  
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  
+  reviewCount: {
+    fontSize: 12,
+    color: '#999',
+  },
+  
+  bookButton: {
+    marginTop: 8,
+    backgroundColor: '#A65E5E',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+  },
+  
+  bookButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  
   promotions: {
     padding: 16,
     backgroundColor: '#fff',
@@ -269,18 +374,41 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#3B3B3B',
   },
-  promotionBanner: {
-    marginTop: 8,
-    marginBottom:40,
-    backgroundColor: '#A65E5E',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
+
+  promotionCards: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+    paddingBottom: 8,
+    paddingTop: 4,
   },
+  
+  promotionCard: {
+    width: 200,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+    marginRight: 12,
+  },
+  
+  promotionImage: {
+    width: '100%',
+    height: 100,
+    resizeMode: 'cover',
+  },
+  
   promotionText: {
-    fontSize: 16,
-    color: '#fff',
+    padding: 10,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#A65E5E',
   },
+  
   navBar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
