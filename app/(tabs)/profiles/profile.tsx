@@ -2,28 +2,47 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import BottomNavBar from '../../../components/BottomNav';  // adjust the path if needed
-
-const sampleUserData = {
-  name: 'John Doe',
-  email: 'john.doe@example.com',
-  phone: '+1 234 567 890',
-  profilePicture: 'https://via.placeholder.com/150',
-};
+import { getUserProfile, updateUserProfile } from '../../../api/user'; // Import API functions
 
 const ProfilePage = () => {
-  const [userData, setUserData] = useState(sampleUserData);
+  const [userData, setUserData] = useState(null); // Initial state is null until data is fetched
   const [editing, setEditing] = useState(false);
-  const [updatedData, setUpdatedData] = useState({ ...userData });
+  const [updatedData, setUpdatedData] = useState({});
+  const [loading, setLoading] = useState(true); // Track loading state
+  const [error, setError] = useState('');
   const navigation = useNavigation();
+
+  // Fetch the logged-in user's data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await getUserProfile(); // Fetch user data from backend API
+        setUserData(response.data);
+        setUpdatedData(response.data); // Initialize updatedData with the fetched data
+      } catch (error) {
+        setError('Failed to load user data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   const handleEditToggle = () => setEditing(!editing);
 
-  const handleSaveChanges = () => {
-    setUserData(updatedData);
-    setEditing(false);
+  const handleSaveChanges = async () => {
+    try {
+      const response = await updateUserProfile(updatedData); // Update user data on the backend
+      setUserData(response.data); // Update userData with the saved data
+      setEditing(false);
+    } catch (error) {
+      setError('Failed to save changes');
+    }
   };
 
   const handleLogout = () => {
+    // You can clear the authentication token or any session-related data here
     navigation.navigate('Login');
   };
 
@@ -31,66 +50,76 @@ const ProfilePage = () => {
     setUpdatedData({ ...updatedData, [field]: value });
   };
 
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
     <>
-    <ScrollView style={styles.container}>
-      <View style={styles.profileHeader}>
-        <Image source={{ uri: userData.profilePicture }} style={styles.profileImage} />
-        <TouchableOpacity style={styles.editButton} onPress={handleEditToggle}>
-          <Text style={styles.editButtonText}>{editing ? 'Cancel' : 'Edit'}</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.profileInfo}>
-        <Text style={styles.sectionTitle}>Profile Information</Text>
-
-        <Text style={styles.fieldLabel}>Name</Text>
-        {editing ? (
-          <TextInput
-            style={styles.input}
-            value={updatedData.name}
-            onChangeText={(text) => handleChange('name', text)}
-          />
-        ) : (
-          <Text style={styles.text}>{userData.name}</Text>
-        )}
-
-        <Text style={styles.fieldLabel}>Email</Text>
-        {editing ? (
-          <TextInput
-            style={styles.input}
-            value={updatedData.email}
-            onChangeText={(text) => handleChange('email', text)}
-          />
-        ) : (
-          <Text style={styles.text}>{userData.email}</Text>
-        )}
-
-        <Text style={styles.fieldLabel}>Phone</Text>
-        {editing ? (
-          <TextInput
-            style={styles.input}
-            value={updatedData.phone}
-            onChangeText={(text) => handleChange('phone', text)}
-          />
-        ) : (
-          <Text style={styles.text}>{userData.phone}</Text>
-        )}
-
-        {editing && (
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSaveChanges}>
-            <Text style={styles.saveBtnText}>Save Changes</Text>
+      <ScrollView style={styles.container}>
+        <View style={styles.profileHeader}>
+          {/* <Image source={{ uri: userData.profilePicture }} style={styles.profileImage} /> */}
+          <TouchableOpacity style={styles.editButton} onPress={handleEditToggle}>
+            <Text style={styles.editButtonText}>{editing ? 'Cancel' : 'Edit'}</Text>
           </TouchableOpacity>
-        )}
-      </View>
+        </View>
 
-      <View style={styles.logoutSection}>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
-    <BottomNavBar activeTab='profile' />
+        <View style={styles.profileInfo}>
+          <Text style={styles.sectionTitle}>Profile Information</Text>
+
+          <Text style={styles.fieldLabel}>Name</Text>
+          {editing ? (
+            <TextInput
+              style={styles.input}
+              value={updatedData.name}
+              onChangeText={(text) => handleChange('name', text)}
+            />
+          ) : (
+            <Text style={styles.text}>{userData.name}</Text>
+          )}
+
+          <Text style={styles.fieldLabel}>Email</Text>
+          {editing ? (
+            <TextInput
+              style={styles.input}
+              value={updatedData.email}
+              onChangeText={(text) => handleChange('email', text)}
+            />
+          ) : (
+            <Text style={styles.text}>{userData.email}</Text>
+          )}
+
+          <Text style={styles.fieldLabel}>Phone</Text>
+          {editing ? (
+            <TextInput
+              style={styles.input}
+              value={updatedData.phone}
+              onChangeText={(text) => handleChange('phone', text)}
+            />
+          ) : (
+            <Text style={styles.text}>{userData.phone}</Text>
+          )}
+
+          {editing && (
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveChanges}>
+              <Text style={styles.saveBtnText}>Save Changes</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <View style={styles.logoutSection}>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+      <BottomNavBar activeTab='profile' />
     </>
   );
 };
@@ -180,6 +209,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginTop: 16,
   },
 });
 
