@@ -1,37 +1,42 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { registerUser } from '../../api/auth'; // Import register function
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import React, { useState, useEffect } from 'react';
+import { registerUser } from '../../api/auth';
 
 export default function SignupScreen() {
   const router = useRouter();
+  const { role = 'user' } = useLocalSearchParams();
+
+  // States for signup fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false); // To handle loading state
-  const [errorMessage, setErrorMessage] = useState(''); // To handle error message
+  const [phone, setPhone] = useState(''); // For Salon Owner
+  const [salonName, setSalonName] = useState(''); // For Salon Owner
+  const [salonAddress, setSalonAddress] = useState(''); // For Salon Owner
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Handle signup logic
   const handleSignup = async () => {
     if (password === confirmPassword) {
       setLoading(true);
-      setErrorMessage(''); // Reset error message on new attempt
+      setErrorMessage('');
 
       try {
-        const response = await registerUser({
-          name,
-          email,
-          password,
-        });
+        const data = role === 'owner'
+          ? { name, email, password, role, phone, salonName, salonAddress }
+          : { name, email, password, role }; // Customer signup data
+
+        const response = await registerUser(data);
         console.log('Registration successful:', response.data);
-        // After successful registration, navigate to login page
         router.push('/auth/login');
       } catch (error) {
         console.log('Registration error:', error.response?.data?.message || error.message);
         setErrorMessage(error.response?.data?.message || 'An error occurred during registration');
       } finally {
-        setLoading(false); // Stop loading state
+        setLoading(false);
       }
     } else {
       setErrorMessage('Passwords do not match');
@@ -77,8 +82,33 @@ export default function SignupScreen() {
         secureTextEntry
       />
 
-      {/* Show error message if passwords do not match or any other error */}
-      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+      {/* Additional fields for Salon Manager */}
+      {role === 'owner' && (
+        <>
+          <TextInput
+            style={styles.input}
+            placeholder="Salon Name"
+            value={salonName}
+            onChangeText={setSalonName}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Salon Address"
+            value={salonAddress}
+            onChangeText={setSalonAddress}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Phone Number"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+          />
+        </>
+      )}
+
+      {/* Show error message */}
+      {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
 
       {/* Sign Up Button */}
       <TouchableOpacity onPress={handleSignup} style={styles.button} disabled={loading}>
@@ -102,5 +132,5 @@ const styles = StyleSheet.create({
   button: { backgroundColor: '#000000', padding: 14, borderRadius: 8, alignItems: 'center' },
   buttonText: { color: '#fff', fontWeight: 'bold' },
   linkText: { marginTop: 16, textAlign: 'center', color: '#828282' },
-  errorText: { color: 'red', textAlign: 'center', marginBottom: 12 }, // Error message styling
+  errorText: { color: 'red', textAlign: 'center', marginBottom: 12 },
 });

@@ -75,3 +75,42 @@ exports.login = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+// UPDATE PROFILE Controller
+exports.updateUserProfile = async (req, res) => {
+    try {
+        const { name, email, phone } = req.body; // Get updated fields from request body
+        const userId = req.user.id;        // Get user ID from the JWT token
+
+        // Find the user by ID
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Update the user's profile fields
+        if (name) user.name = name;
+        if (email) user.email = email;
+        if (phone !== undefined) user.phone = phone;
+
+
+        // Save the updated user to the database
+        await user.save();
+
+        // Respond with the updated user data
+        res.status(200).json({
+            message: 'Profile updated successfully',
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                role: user.role
+            }
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};

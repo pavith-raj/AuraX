@@ -16,18 +16,30 @@ export default function HomePage() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Image
-          source={require('../../assets/images/AuraX-icon.png')} // logo
-          style={styles.logo}
-        />
-        <TextInput
-          style={styles.searchBar}
-          placeholder="Search salons or services"
-        />
-        <TouchableOpacity style={styles.profileIcon}>
-          <Feather name="user" size={24} color="#A65E5E" />
-        </TouchableOpacity>
-      </View>
+  {/* Logo */}
+  <Image
+    source={require('../../assets/images/AuraX-icon.png')}
+    style={styles.logo}
+  />
+
+  {/* Search Bar */}
+  <View style={styles.searchWrapper}>
+    <Feather name="search" size={16} color="#888" style={{ marginLeft: 8 }} />
+    <TextInput
+      style={styles.searchInput}
+      placeholder="Search salons or services"
+      placeholderTextColor="#888"
+    />
+  </View>
+
+  {/* Location Dropdown */}
+  <TouchableOpacity style={styles.locationIconOnly}>
+  <Feather name="map-pin" size={20} color="#A65E5E" />
+</TouchableOpacity>
+
+</View>
+
+
 
     {/* Real-Time Booking */}
     <ScrollView contentContainerStyle={styles.scrollContent} style={{ marginTop: 0, marginBottom: 0 }}>
@@ -153,40 +165,62 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    paddingTop: 40,
     backgroundColor: '#EAD8D8',
+    paddingTop: 40,
+    paddingBottom: 10,
+    paddingHorizontal: 12,
+    gap: 2, // optional for spacing
   },
+  
+  
   logo: {
-    width: 40,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: 'white',
+    resizeMode: 'contain',
+  },
+  
+  searchWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingHorizontal: 10,
     height: 40,
-    borderRadius: 9,
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    padding: 6,
+    flex: 1,
+    marginHorizontal: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3, // for Android
+    shadowRadius: 3,
+    elevation: 2,
   },
-  searchBar: {
+  
+  searchInput: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    marginLeft: 10,
-    backgroundColor: '#f0f0f0',
+    fontSize: 13,
+    color: '#000',
+    marginLeft: 6,
+    paddingVertical: 0,
+    includeFontPadding: false, //keeps text within bounds
   },
-  profileIcon: {
-    justifyContent: 'center',
+  
+  locationIconOnly: {
+    padding: 6,
+    borderRadius: 30,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
     alignItems: 'center',
-    paddingHorizontal: 8,  // Optional: add spacing around icon
+    justifyContent: 'center',
   },
-  // profileText: {
-  //   fontSize: 16,
-  //   color: '#6C63FF',
-  // },
+
   bookingSection: {
     padding: 16,
   },

@@ -2,7 +2,7 @@ import api from './axiosInstance';
 
 export const getUserProfile = async () => {
   try {
-    const res = await api.get('/user/profile'); // Get user profile data
+    const res = await api.get('/auth/profile'); // Get user profile data
     return res.data; // Return the data from the response
   } catch (error) {
     console.log(error.response?.data?.message || 'An error occurred');

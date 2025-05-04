@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login } = require('../controllers/authController'); // Import functions
+const { register, login, updateUserProfile } = require('../controllers/authController'); // Import functions
 const { protect } = require('../middleware/authMiddleware'); 
 const { authorizeRoles } = require('../middleware/roleMiddleware');
 
@@ -22,6 +22,10 @@ router.get('/profile', protect, async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
+
+// 🛡️ Protected route for PUT profile (Update profile)
+
+router.put('/profile', protect, updateUserProfile);
 
 // 🛡️ Admin-only route
 router.get('/adminonly', protect, authorizeRoles('admin'), (req, res) => {

@@ -18,7 +18,7 @@ export default function Index() {
   useEffect(() => {
     const checkAuthStatus = async () => {
       // Check if a valid token exists in AsyncStorage
-      const token = await AsyncStorage.getItem('auth_token');
+      const token = await AsyncStorage.getItem('token');
       if (token) {
         // If a token exists, set the logged-in state to true
         setIsLoggedIn(true);

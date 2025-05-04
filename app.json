@@ -1,5 +1,6 @@
 {
   "expo": {
+    "scheme": "aurax",
     "name": "aurax",
     "slug": "aurax",
     "version": "1.0.0",

@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true,
-        unique: true, // email must be unique
+        unique: true, 
     },
     password: {
         type: String,
@@ -19,7 +19,11 @@ const userSchema = new mongoose.Schema({
         type: String,
         enum: ['user', 'owner', 'admin'], // Only these 3 roles allowed
         default: 'user',
-    }
+    },
+    phone: { 
+        type: String, 
+        default: '' }, 
+        
 }, { timestamps: true }); // Automatically adds createdAt and updatedAt fields
 
 // Export the model
