@@ -1,7 +1,7 @@
 // app/api/user.js
 import axios from 'axios';  // Use axios or fetch to make API calls
 
-const API_URL = 'http://192.168.1.72:5000/api';
+const API_URL = 'http://192.168.45.81:5000/api';
 
 export const getUserProfile = async (token) => {
   try {

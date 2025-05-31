@@ -60,7 +60,7 @@ export default function HomePage() {
             <Text style={styles.categoryText}>Manicures</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.bookNowButton} onPress={() => router.push('/book')}>
+        <TouchableOpacity style={styles.bookNowButton} onPress={() => router.push('/book/appointmentBooking')}>
           <Text style={styles.bookNowText}>Book Now</Text>
         </TouchableOpacity>
       </View>
