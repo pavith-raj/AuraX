@@ -129,11 +129,31 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
-  container: { padding: 20, backgroundColor: '#F7E8E8', flex: 1 },
-  title: { fontSize: 26, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  card: { backgroundColor: '#fff', padding: 16, borderRadius: 10, marginBottom: 20 },
-  label: { fontSize: 16, fontWeight: '600', marginBottom: 6 },
-  text: { fontSize: 14, color: '#444' },
+  container: { 
+    padding: 20, 
+    backgroundColor: '#F7E8E8', 
+    flex: 1 
+  },
+  title: { 
+    fontSize: 26, 
+    fontWeight: 'bold', 
+    marginBottom: 20, 
+    textAlign: 'center' 
+  },
+  card: { 
+    backgroundColor: '#fff', 
+    padding: 16, 
+    borderRadius: 10, 
+    marginBottom: 20 
+  },
+  label: { fontSize: 16, 
+    fontWeight: '600', 
+    marginBottom: 6 
+  },
+  text: { 
+    fontSize: 14, 
+    color: '#444' 
+  },
   input: {
     backgroundColor: '#fff',
     padding: 12,
@@ -149,5 +169,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  buttonText: { 
+    color: '#fff', 
+    fontSize: 16, 
+    fontWeight: 'bold' 
+  },
 });

@@ -1,39 +1,26 @@
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import BottomNavBar from '../../../components/BottomNav';  // adjust the path if needed
-
-const salons = [
-  {
-    id: '1',
-    name: 'Glamour Hub',
-    rating: 4.5,
-    // image: require('../../assets/images/salon1.jpg'),
-  },
-  {
-    id: '2',
-    name: 'Elite Salon',
-    rating: 5,
-    // image: require('../../assets/images/salon2.jpg'),
-  },
-  {
-    id:'3',
-    name:'Beauty Bliss',
-    rating:4,
-  },
-  { 
-    id: '4', 
-    name: 'Hair Affair',
-    rating: 3.5 
-  },
-];
+import BottomNavBar from '../../../components/BottomNav'; 
+import { getSalons } from '../../../api/salon';
 
 export default function SalonList() {
   const router = useRouter();
-
+  const [salons, setSalons] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const[selectedRating,setSelectedRating] = useState<number | null>(null);
+
+  useEffect(() => {
+    getSalons()
+    .then(data => {
+      setSalons(data);
+      setLoading(false);
+    })
+    .catch(() => setLoading(false));
+  }, []);
+
 
   const filteredSalons = salons.filter((salon) =>{
     const matchesSearch = salon.name.toLowerCase().includes(searchText.toLowerCase());
@@ -96,7 +83,7 @@ export default function SalonList() {
 
       {filteredSalons.map((salon) => (
         <TouchableOpacity
-          key={salon.id}
+          key={salon._id}
           style={styles.card}
           onPress={() => router.push('details?id=' + salon.id)}
         >
