@@ -4,11 +4,13 @@ import React, { useState } from 'react';
 import { loginUser } from '../../api/auth'; // Import login function
 import { storeToken } from '../../api/storage'; // Import storeToken function
 import { MotiImage } from 'moti';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false); // To handle loading state
   const [errorMessage, setErrorMessage] = useState(''); // To handle error message
 
@@ -24,19 +26,18 @@ export default function LoginScreen() {
       // Save the JWT token securely using storeToken
       await storeToken(response.data.token); // Save token securely
 
-    // Get role from user object in response
-      const role = response.data.user.role;
+  // Handle both user and salon logins
+  const { user, salon } = response.data;
+  const role = user ? user.role : salon ? salon.role : null;
 
     // Redirect based on role
-    if (role === 'owner') {
-      router.replace('/owner/profile');
-    } else if (role === 'user') {
-      router.replace('/user');
-    } else if (role === 'admin') {
-      router.replace('/admin/dashboard'); // example for admin
-    } else {
-      router.replace('/'); // fallback
-    } // Redirect to home page after successful login
+  if (user) {
+    router.replace('/user');
+  } else if (salon) {
+    router.replace('/owner/profile');
+  } else {
+    router.replace('/');
+  } // Redirect to home page after successful login
     } catch (error) {
       console.log('Login error:', error.response?.data?.message || error.message);
       setErrorMessage(error.response?.data?.message || 'An error occurred during login');
@@ -86,13 +87,25 @@ export default function LoginScreen() {
       />
 
       {/* Password Input */}
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+<View style={{ position: 'relative' }}>
+  <TextInput
+    style={styles.input}
+    placeholder="Password"
+    value={password}
+    onChangeText={setPassword}
+    secureTextEntry={!showPassword}
+  />
+  <TouchableOpacity
+    style={{ position: 'absolute', right: 16, top: 16 }}
+    onPress={() => setShowPassword((prev) => !prev)}
+  >
+    <MaterialIcons
+      name={showPassword ? 'visibility' : 'visibility-off'}
+      size={24}
+      color="#888"
+    />
+  </TouchableOpacity>
+</View>
 
       {/* Show error message */}
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}

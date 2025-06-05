@@ -1,11 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, updateUserProfile } = require('../controllers/authController'); // Import functions
+const { register, registerSalonOwner,login, updateUserProfile } = require('../controllers/authController'); // Import functions
 const { protect } = require('../middleware/authMiddleware'); 
 const { authorizeRoles } = require('../middleware/roleMiddleware');
 
 // POST /register route
 router.post('/register', register);
+
+// SalonOwner route
+router.post('/register-salon', registerSalonOwner);
 
 // POST /login route
 router.post('/login', login);

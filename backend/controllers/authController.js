@@ -1,4 +1,5 @@
-const User = require('../models/user'); // Import User model
+const User = require('../models/user');
+const Salon = require('../models/salon');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -12,15 +13,11 @@ exports.register = async (req, res) => {
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
         }
-
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
         // Create new user
         const user = new User({
             name,
             email,
-            password: hashedPassword,
+            password,
             role
         });
 
@@ -34,47 +31,93 @@ exports.register = async (req, res) => {
     }
 };
 
+// SALON OWNER REGISTER Controller
+exports.registerSalonOwner = async (req, res) => {
+  try {
+    const {
+      name, email, password, phone,
+      salonName, salonAddress, location, services
+    } = req.body;
+
+    // Check if email already exists in salons
+    const existingSalon = await Salon.findOne({ email });
+    if (existingSalon) return res.status(400).json({ error: 'Salon already exists' });
+
+    const salon = new Salon({
+      name,
+      email,
+      password,
+      phone,
+      salonName,
+      salonAddress,
+      location,
+      services,
+      // rating, role, isApproved use defaults
+    });
+
+    await salon.save();
+    res.status(201).json({ message: 'Salon owner registered successfully', salon });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
 // LOGIN Controller
 exports.login = async (req, res) => {
-    try {
-        const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-        // Check if user exists
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ message: 'Invalid email or password' });
+    // Try to find user
+    let user = await User.findOne({ email });
+    if (user && await user.comparePassword(password)) {
+      const token = jwt.sign(
+        { id: user._id, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      return res.status(200).json({
+        message: 'Login successful',
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role
         }
-
-        // Compare password
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid email or password' });
-        }
-
-        // Generate JWT Token
-        const token = jwt.sign(
-            { id: user._id, role: user.role },
-            process.env.JWT_SECRET, // ✅ Safe access of secret
-            { expiresIn: '7d' }
-        );
-
-        // Success
-        res.status(200).json({
-            message: 'Login successful',
-            token,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role
-            }
-        });
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+      });
     }
+
+    // Try to find salon
+    let salon = await Salon.findOne({ email });
+    if (salon && await salon.comparePassword(password)) {
+      const token = jwt.sign(
+        { id: salon._id, role: salon.role },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      return res.status(200).json({
+        message: 'Login successful',
+        token,
+        salon: {
+          id: salon._id,
+          name: salon.name,
+          email: salon.email,
+          role: salon.role,
+          salonName: salon.salonName,
+          salonAddress: salon.salonAddress,
+          phone: salon.phone
+        }
+      });
+    }
+
+    return res.status(401).json({ message: 'Invalid email or password' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
 };
+
 
 // UPDATE PROFILE Controller
 exports.updateUserProfile = async (req, res) => {

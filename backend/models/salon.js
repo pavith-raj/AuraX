@@ -1,11 +1,38 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const salonSchema = new mongoose.Schema({
-  name: String,
-  rating: Number,
-  address: String,
-  imageUrl: String,
-  services: [String],
+  // Authentication fields
+  name: { type: String, required: true }, // Owner's name
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  phone: { type: String, required: true },
+
+  // Salon details
+  salonName: { type: String, required: true },
+  salonAddress: { type: String, required: true },
+  location: {
+    lat: { type: Number },
+    lng: { type: Number }
+  },
+  services: [{ type: String }], // Initial list, can be empty
+  rating: { type: Number, default: 0 },
+
+  // Other fields
+  role: { type: String, default: 'owner' },
+  isApproved: { type: Boolean, default: false }
 });
+
+// Hash password before saving
+salonSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
+
+// Password comparison method
+salonSchema.methods.comparePassword = async function (candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
 
 module.exports = mongoose.model('Salon', salonSchema);

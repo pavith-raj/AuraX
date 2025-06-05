@@ -1,6 +1,7 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useState} from 'react';
 import { registerUser } from '../../api/auth';
 
 export default function SignupScreen() {
@@ -12,11 +13,20 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState(''); // For Salon Owner
   const [salonName, setSalonName] = useState(''); // For Salon Owner
   const [salonAddress, setSalonAddress] = useState(''); // For Salon Owner
+  const [location, setLocation] = useState<{ lat: number | null; lng: number | null }>({ lat: null, lng: null });
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+   // Simple location picker (for demonstration)
+  // In production, use a map picker or geolocation API
+  const handleSetLocation = () => {
+    // Example: set static coordinates or use a real picker
+    setLocation({ lat: 12.9716, lng: 77.5946 }); // Example: Bangalore coordinates
+  };
 
   // Handle signup logic
   const handleSignup = async () => {
@@ -26,7 +36,7 @@ export default function SignupScreen() {
 
       try {
         const data = role === 'owner'
-          ? { name, email, password, role, phone, salonName, salonAddress }
+          ? { name, email, password, role, phone, salonName, salonAddress, location, services: [] }
           : { name, email, password, role }; // Customer signup data
 
         const response = await registerUser(data);
@@ -64,14 +74,25 @@ export default function SignupScreen() {
         keyboardType="email-address"
       />
 
-      {/* Password Input */}
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+<View style={{ position: 'relative' }}>
+  <TextInput
+    style={styles.input}
+    placeholder="Password"
+    value={password}
+    onChangeText={setPassword}
+    secureTextEntry={!showPassword}
+  />
+  <TouchableOpacity
+    style={{ position: 'absolute', right: 16, top: 16 }}
+    onPress={() => setShowPassword((prev) => !prev)}
+  >
+    <MaterialIcons
+      name={showPassword ? 'visibility' : 'visibility-off'}
+      size={24}
+      color="#888"
+    />
+  </TouchableOpacity>
+</View>
 
       {/* Confirm Password Input */}
       <TextInput
@@ -104,6 +125,14 @@ export default function SignupScreen() {
             onChangeText={setPhone}
             keyboardType="phone-pad"
           />
+          {/* Location Picker */}
+          <TouchableOpacity style={[styles.input, { backgroundColor: '#f0f0f0', justifyContent: 'center' }]} onPress={handleSetLocation}>
+            <Text style={{ color: location.lat && location.lng ? '#333' : '#aaa' }}>
+              {location.lat && location.lng
+                ? `Location set: (${location.lat}, ${location.lng})`
+                : 'Pick Location'}
+            </Text>
+          </TouchableOpacity>
         </>
       )}
 
