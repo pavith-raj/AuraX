@@ -4,9 +4,12 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams } from 'expo-router';
 
 export default function AppointmentBooking() {
   const router = useRouter();
+
+  const { salonId, salonName, salonAddress, salonRating } = useLocalSearchParams();
 
   const [service, setService] = useState('');
   const [date, setDate] = useState(new Date());
@@ -44,8 +47,8 @@ export default function AppointmentBooking() {
       {/* Salon Info */}
       <View style={styles.card}>
         <Text style={styles.label}>Salon:</Text>
-        <Text style={styles.text}>Glamor Studio</Text>
-        <Text style={styles.text}>📍 Mangalore | ⭐ 4.8</Text>
+        <Text style={styles.text}>{salonName}</Text>
+        <Text style={styles.text}>📍 {salonAddress} | ⭐ {salonRating}</Text>
       </View>
 
       {/* Service Input */}

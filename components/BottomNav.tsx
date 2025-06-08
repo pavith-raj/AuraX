@@ -11,23 +11,23 @@ export default function BottomNav({ activeTab}:BottomNavBarProps) {
 
   return (
     <View style={styles.navBar}>
-      <TouchableOpacity onPress={() => router.push('user')} style={styles.navButton}>
+      <TouchableOpacity onPress={() => router.replace('user')} style={styles.navButton}>
         <Feather name="home" size={24} color={activeTab === 'home' ? '#A65E5E' : '#777'} />
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push('/user/salons/salonslist')} style={styles.navButton}>
+      <TouchableOpacity onPress={() => router.replace('/user/salons/salonslist')} style={styles.navButton}>
         <MaterialIcons name="storefront" size={24} color={activeTab === 'salons' ? '#A65E5E' : '#777'} />
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push('/(tabs)/products/products')} style={styles.navButton}>
+      <TouchableOpacity onPress={() => router.replace('/(tabs)/products/products')} style={styles.navButton}>
         <Feather name="shopping-bag" size={24} color={activeTab === 'products' ? '#A65E5E' : '#777'} />
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push('/(tabs)/appointments/appointments')} style={styles.navButton}>
+      <TouchableOpacity onPress={() => router.replace('/(tabs)/appointments/appointments')} style={styles.navButton}>
         <Feather name="calendar" size={24} color={activeTab === 'appointments' ? '#A65E5E' : '#777'} />
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push('/(tabs)/profiles/profile')} style={styles.navButton}>
+      <TouchableOpacity onPress={() => router.replace('/(tabs)/profiles/profile')} style={styles.navButton}>
         <Feather name="user" size={24} color={activeTab === 'profile' ? '#A65E5E' : '#777'} />
       </TouchableOpacity>
     </View>

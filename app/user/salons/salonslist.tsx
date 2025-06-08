@@ -1,12 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import BottomNavBar from '../../../components/BottomNav'; 
 import { getSalons } from '../../../api/salon';
 
 export default function SalonList() {
   const router = useRouter();
+  
+  const { fromBooking } = useLocalSearchParams();
+
   const [salons, setSalons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
@@ -82,18 +85,47 @@ export default function SalonList() {
     <ScrollView style={styles.container}>
 
       {filteredSalons.map((salon) => (
-        <TouchableOpacity
-          key={salon._id}
-          style={styles.card}
-          onPress={() => router.push('details?id=' + salon.id)}
-        >
-          {/* <Image source={salon.image} style={styles.image} /> */}
-          <View style={styles.details}>
-            <Text style={styles.name}>{salon.name}</Text>
-            <Text style={styles.rating}>⭐ {salon.rating}</Text>
-          </View>
-        </TouchableOpacity>
-      ))}
+  <View key={salon._id} style={styles.card}>
+    {/* <Image source={salon.image} style={styles.image} /> */}
+    <TouchableOpacity
+      style={styles.details}
+      onPress={() => {
+        if (fromBooking) {
+          // Go to booking screen with salon info
+          router.push({
+            pathname: '/book/appointmentBooking',
+            params: {
+              salonId: salon._id,
+              salonName: salon.name,
+              salonAddress: salon.salonAddress,
+              salonRating: salon.rating,
+            },
+          });
+        } else {
+          // Normal details navigation
+          router.push(`/user/salons/details?id=${salon._id}`);
+        }
+      }}
+    >
+      <Text style={styles.salonName}>{salon.salonName}</Text>
+      <View style={styles.rowAlign}>
+      <Text style={styles.rating}>⭐ {salon.rating}</Text>
+      <Text style={styles.salonAddress}>📍{salon.salonAddress}</Text>
+
+    {/* Show Details button only in booking flow */}
+    {fromBooking ? (
+      <TouchableOpacity
+        style={styles.detailsBtn}
+        onPress={() => router.push(`/user/salons/details?id=${salon._id}`)}
+      >
+        <Text style={styles.detailsBtnText}>Details</Text>
+    
+      </TouchableOpacity>
+        ) : null}
+      </View>
+    </TouchableOpacity>
+  </View>
+))}
     </ScrollView>
     <BottomNavBar activeTab='salons' />
     </>
@@ -167,12 +199,32 @@ const styles = StyleSheet.create({
   details: {
     padding: 12,
   },
-  name: {
+salonName: {
     fontSize: 18,
     fontWeight: 'bold',
   },
   rating: {
     marginTop: 4,
     color: '#FF6347',
+  },
+  rowAlign: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    flexWrap: 'wrap',
+  },
+  detailsBtn: {
+    backgroundColor: '#A65E5E',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    marginLeft: 'auto', // pushes button to the right
+    marginRight: 0,
+    marginTop: 0,
+  },
+  detailsBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 15,
   },
 });

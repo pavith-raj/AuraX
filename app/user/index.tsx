@@ -1,43 +1,147 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TextInput } from 'react-native';
-import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Modal, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, StatusBar } from 'react-native';
-import { Feather } from '@expo/vector-icons'; // You can also use Ionicons, FontAwesome, etc.
-import BottomNavBar from '../../components/BottomNav';  // adjust the path if needed
+import { Feather } from '@expo/vector-icons'; 
+import BottomNavBar from '../../components/BottomNav'; 
+
+const GOOGLE_API_KEY = 'AIzaSyD9AOX5rjhxoThJDlVYPtkCtLNg7Vivpls';
 
 export default function HomePage() {
   const router = useRouter();
+
+  // State for location modal
+  const [locationModalVisible, setLocationModalVisible] = useState(false);
+  const [locationQuery, setLocationQuery] = useState('');
+  const [locationPredictions, setLocationPredictions] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState('');
+
+  // Fetch predictions from Google Places API
+  const fetchPredictions = async (input) => {
+    setLocationQuery(input);
+    if (input.length < 2) {
+      setLocationPredictions([]);
+      return;
+    }
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
+      input
+    )}&key=${GOOGLE_API_KEY}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    setLocationPredictions(json.predictions || []);
+  };
+
+  // When a prediction is selected
+  const handleSelectPrediction = (item) => {
+    setSelectedLocation(item.description);
+    setLocationModalVisible(false);
+    setLocationQuery('');
+    setLocationPredictions([]);
+  };
 
   return (
     <>
     <SafeAreaView style={{ flex: 1, backgroundColor: '#EAD8D8' }}>
     <StatusBar backgroundColor="#EAD8D8" barStyle="dark-content" />
 
-      {/* Header */}
-      <View style={styles.header}>
-  {/* Logo */}
-  <Image
-    source={require('../../assets/images/AuraX-icon.png')}
-    style={styles.logo}
-  />
+    {/* Header */}
+    <View style={styles.header}>
+  
+      {/* Logo */}
+      <Image
+        source={require('../../assets/images/AuraX-icon.png')}
+        style={styles.logo}
+      />
 
-  {/* Search Bar */}
-  <View style={styles.searchWrapper}>
-    <Feather name="search" size={16} color="#888" style={{ marginLeft: 8 }} />
-    <TextInput
-      style={styles.searchInput}
-      placeholder="Search salons or services"
-      placeholderTextColor="#888"
-    />
-  </View>
+      {/* Search Bar */}
+      <View style={styles.searchWrapper}>
+        <Feather name="search" size={16} color="#888" style={{ marginLeft: 8 }} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search salons or services"
+          placeholderTextColor="#888"
+        />
+      </View>
 
-  {/* Location Dropdown */}
-  <TouchableOpacity style={styles.locationIconOnly}>
-  <Feather name="map-pin" size={20} color="#A65E5E" />
-</TouchableOpacity>
+      {/* Location Dropdown */}
+      <TouchableOpacity
+            style={styles.locationIconOnly}
+            onPress={() => setLocationModalVisible(true)}
+          >
+            <Feather name="map-pin" size={20} color="#A65E5E" />
+          </TouchableOpacity>
 
-</View>
+    </View>
+
+
+{/* Location Modal */}
+        <Modal
+          visible={locationModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setLocationModalVisible(false)}
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.3)',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}>
+            <View style={{
+              backgroundColor: '#fff',
+              borderRadius: 12,
+              padding: 16,
+              width: '90%',
+              maxHeight: '70%'
+            }}>
+          
+          {/* Show selected location below header (optional) */}
+          {selectedLocation ? (
+            <Text style={{ textAlign: 'center', color: '#A65E5E', marginBottom: 4 }}>
+              {selectedLocation}
+            </Text>
+          ) : null}
+
+            <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>Choose Location</Text>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: '#ccc',
+                  borderRadius: 8,
+                  padding: 10,
+                  marginBottom: 12
+                }}
+                placeholder="Search location"
+                value={locationQuery}
+                onChangeText={fetchPredictions}
+                autoFocus
+              />
+              <FlatList
+                data={locationPredictions}
+                keyExtractor={item => item.place_id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    onPress={() => handleSelectPrediction(item)}
+                    style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' }}
+                  >
+                    <Text>{item.description}</Text>
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={<Text style={{ color: '#888', textAlign: 'center' }}>Type to search...</Text>}
+                keyboardShouldPersistTaps="handled"
+              />
+              
+              <TouchableOpacity
+                onPress={() => setLocationModalVisible(false)}
+                style={{ marginTop: 12, alignSelf: 'flex-end' }}
+              >
+                <Text style={{ color: '#A65E5E', fontWeight: 'bold' }}>Close</Text>
+              </TouchableOpacity>
+
+            </View>
+          </View>
+        </Modal>
 
 
 
@@ -60,7 +164,8 @@ export default function HomePage() {
             <Text style={styles.categoryText}>Manicures</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.bookNowButton} onPress={() => router.push('/book/appointmentBooking')}>
+        
+        <TouchableOpacity style={styles.bookNowButton} onPress={() => router.push('/user/salons/salonslist?fromBooking=1')}>
           <Text style={styles.bookNowText}>Book Now</Text>
         </TouchableOpacity>
       </View>

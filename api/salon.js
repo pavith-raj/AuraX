@@ -11,3 +11,13 @@ export const getSalons = async () => {
         throw error;
     }
 };
+// Add this function to fetch a salon by ID
+export const getSalonById = async (id) => {
+    try {
+        const response = await axios.get(`${API_URL}/salons/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching salon by ID:', error.message);
+        throw error;
+    }
+};
