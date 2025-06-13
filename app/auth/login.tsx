@@ -5,9 +5,12 @@ import { loginUser } from '../../api/auth'; // Import login function
 import { storeToken } from '../../api/storage'; // Import storeToken function
 import { MotiImage } from 'moti';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useSalon } from '../../context/SalonContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { setSalonId } = useSalon();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -26,21 +29,28 @@ export default function LoginScreen() {
       // Save the JWT token securely using storeToken
       await storeToken(response.data.token); // Save token securely
 
-  // Handle both user and salon logins
-  const { user, salon } = response.data;
-  const role = user ? user.role : salon ? salon.role : null;
+      // Handle both user and salon logins
+      const { user, salon } = response.data;
+      const role = user ? user.role : salon ? salon.role : null;
 
-    // Redirect based on role
-  if (user) {
-    router.replace('/user');
-  } else if (salon) {
-    router.replace('/owner/profile');
-  } else {
-    router.replace('/');
-  } // Redirect to home page after successful login
+      // If it's a salon login, store the salon ID in context and AsyncStorage
+      if (salon) {
+        setSalonId(salon.id);
+        await AsyncStorage.setItem('salonId', salon.id);
+      }
+
+      // Redirect based on role
+      if (user) {
+        router.replace('/user');
+      } else if (salon) {
+        router.replace('/owner/profile');
+      } else {
+        router.replace('/');
+      } // Redirect to home page after successful login
     } catch (error) {
-      console.log('Login error:', error.response?.data?.message || error.message);
-      setErrorMessage(error.response?.data?.message || 'An error occurred during login');
+      const err = error as any;
+      console.log('Login error:', err.response?.data?.message || err.message);
+      setErrorMessage(err.response?.data?.message || 'An error occurred during login');
     } finally {
       setLoading(false); // Stop loading state
     }

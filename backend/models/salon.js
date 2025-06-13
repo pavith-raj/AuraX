@@ -17,10 +17,13 @@ const salonSchema = new mongoose.Schema({
   },
   services: [{ type: String }], // Initial list, can be empty
   rating: { type: Number, default: 0 },
+  openingTime: { type: String, default: '9:00 AM' },
+  closingTime: { type: String, default: '8:00 PM' },
 
   // Other fields
   role: { type: String, default: 'owner' },
-  isApproved: { type: Boolean, default: false }
+  isApproved: { type: Boolean, default: false },
+  profileImage: { type: String, default: '' }
 });
 
 // Hash password before saving

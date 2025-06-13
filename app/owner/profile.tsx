@@ -1,7 +1,10 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, SafeAreaView, Animated, Pressable } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, SafeAreaView, Animated, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { getSalonById, updateSalonProfile } from '../../api/salon';
+import { useSalon } from '../../context/SalonContext';
+import * as ImagePicker from 'expo-image-picker';
 
 type IconName = keyof typeof MaterialIcons.glyphMap;
 
@@ -11,8 +14,21 @@ type MenuItem = {
   route: string;
 };
 
+type SalonType = {
+  profileImage?: string;
+  salonName?: string;
+  salonAddress?: string;
+  openingTime?: string;
+  closingTime?: string;
+  // add other fields as needed
+};
+
 export default function SalonProfile() {
   const router = useRouter();
+  const { salonId } = useSalon();
+  const [salon, setSalon] = useState<SalonType | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
 
   const menuItems: MenuItem[] = [
     {
@@ -72,26 +88,79 @@ export default function SalonProfile() {
     return { onPressIn, onPressOut };
   };
 
+  const pickAndUploadImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to make this work!');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+    if (!result.canceled) {
+      setUploading(true);
+      const imageUrl = result.assets[0].uri;
+      await updateSalonProfile(salonId, { profileImage: imageUrl });
+      setSalon({ ...salon, profileImage: imageUrl });
+      setUploading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!salonId) return;
+    setLoading(true);
+    getSalonById(salonId)
+      .then(data => {
+        setSalon(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [salonId]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#A65E5E" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 80 }}>
         {/* Header Section */}
         <View style={styles.headerCard}>
-          <View style={styles.headerContentCentered}>
-            <Image
-              source={{ uri: 'https://via.placeholder.com/100' }}
-              style={styles.profileImageLarge}
-            />
-            <Text style={styles.salonNameLarge}>My Salon</Text>
-            <Text style={styles.salonAddress}>{'123 Beauty Street, City'}</Text>
-            <Text style={styles.salonHours}>{'Open: 9:00 AM - 8:00 PM'}</Text>
-          </View>
+          {/* Edit (pencil) button: top right of card */}
           <TouchableOpacity
-            style={styles.fabEditButton}
+            style={styles.fabPencilButtonCard}
             onPress={() => router.push('/owner/edit-profile')}
           >
             <MaterialIcons name="edit" size={24} color="#fff" />
           </TouchableOpacity>
+          <View style={styles.headerContentCentered}>
+            <View style={{ position: 'relative', width: 120, height: 120, marginBottom: 14 }}>
+              <Image
+                source={{ uri: salon?.profileImage || 'https://via.placeholder.com/100' }}
+                style={styles.profileImageLarge}
+              />
+              {/* Camera button: bottom right of image */}
+              <TouchableOpacity
+                style={[styles.fabEditButton, styles.fabCameraButton]}
+                onPress={pickAndUploadImage}
+                disabled={uploading}
+              >
+                <MaterialIcons name={uploading ? 'hourglass-empty' : 'camera-alt'} size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.salonNameLarge}>{salon?.salonName || 'My Salon'}</Text>
+            <Text style={styles.salonAddress}>{salon?.salonAddress || '123 Beauty Street, City'}</Text>
+            <Text style={styles.salonHours}>{salon ? `Open: ${salon.openingTime || '9:00 AM'} - ${salon.closingTime || '8:00 PM'}` : 'Open: 9:00 AM - 8:00 PM'}</Text>
+          </View>
         </View>
 
         {/* Quick Stats */}
@@ -210,12 +279,10 @@ const styles = StyleSheet.create({
   },
   fabEditButton: {
     position: 'absolute',
-    right: 18,
-    bottom: 18,
-    backgroundColor: '#A65E5E',
-    borderRadius: 28,
-    width: 56,
-    height: 56,
+    bottom: 0,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
@@ -223,6 +290,31 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.22,
     shadowRadius: 8,
+    borderWidth: 3,
+    borderColor: 'white',
+    backgroundColor: '#A65E5E',
+  },
+  fabCameraButton: {
+    right: 0,
+  },
+  fabPencilButtonCard: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: '#A65E5E',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#A65E5E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    borderWidth: 3,
+    borderColor: 'white',
+    zIndex: 10,
   },
   statsScrollModern: {
     marginTop: 10,

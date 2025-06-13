@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '../context/AuthContext'; // ✅ AuthProvider
+import { SalonProvider } from '../context/SalonContext';
 
 // Prevent the splash screen from auto-hiding BEFORE asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -34,12 +35,16 @@ export default function RootLayout() {
       <ThemeProvider value={DefaultTheme}>
         {/* ✅ Wrap whole app with AuthProvider */}
         <AuthProvider>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="auth/login" options={{ headerShown: false }} />
-            <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
-          </Stack>
+          <SalonProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="auth/login" options={{ headerShown: false }} />
+              <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
+              <Stack.Screen name="owner/profile" options={{ headerShown: false }} />
+              <Stack.Screen name="owner/edit-profile" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="+not-found" />
+            </Stack>
+          </SalonProvider>
         </AuthProvider>
         <StatusBar style="auto" />
       </ThemeProvider>
