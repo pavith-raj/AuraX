@@ -212,7 +212,7 @@ export default function HomePage() {
                   <Text style={styles.salonRating}>⭐⭐⭐⭐☆</Text>
                   <Text style={styles.reviewCount}>(120)</Text>
                 </View>
-                <TouchableOpacity style={styles.bookButton} onPress={() => router.push('/book')}>
+                <TouchableOpacity style={styles.bookButton} onPress={() => router.push('/book/appointmentBooking')}>
                   <Text style={styles.bookButtonText}>Book Now</Text>
                 </TouchableOpacity>
               </View>
@@ -226,7 +226,7 @@ export default function HomePage() {
                   <Text style={styles.salonRating}>⭐⭐⭐⭐⭐</Text>
                   <Text style={styles.reviewCount}>(120)</Text>
                 </View>
-                <TouchableOpacity style={styles.bookButton} onPress={() => router.push('/book')}>
+                <TouchableOpacity style={styles.bookButton} onPress={() => router.push('/book/appointmentBooking')}>
                   <Text style={styles.bookButtonText}>Book Now</Text>
                 </TouchableOpacity>
               </View>

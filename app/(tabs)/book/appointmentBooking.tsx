@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
@@ -11,16 +11,20 @@ export default function AppointmentBooking() {
 
   const { salonId, salonName, salonAddress, salonRating } = useLocalSearchParams();
 
-  const [service, setService] = useState('');
+  const [availableServices, setAvailableServices] = useState([]);
+  const [selectedServices, setSelectedServices] = useState([]);
+
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [time, setTime] = useState('');
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [stylist, setStylist] = useState('');
   const [notes, setNotes] = useState('');
 
+
   const handleBooking = () => {
     console.log({
-      service,
+      services: selectedServices,
       date: date.toDateString(),
       time,
       stylist,
@@ -29,19 +33,33 @@ export default function AppointmentBooking() {
     alert('Appointment booked!');
     router.push('/(tabs)/appointments');
   };
+  
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const response = await fetch(`http://192.168.45.81:5000/api/salons/${salonId}`);
+        const data = await response.json();
+        setAvailableServices(data.services || []);
+      } catch (error) {
+        setAvailableServices([]);
+        alert('Failed to fetch services');
+      }
+    };
+    if (salonId) fetchServices();
+  }, [salonId]);
 
   return (
     <>
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#EAD8D8' }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#A65E5E' }}>
 
     
     {/* Back Button*/}
     <View style={styles.header}>
-      <TouchableOpacity onPress={()=> router.back()} style={styles.backButton}>
+      <TouchableOpacity onPress={()=> router.replace('/user/salons/salonslist?fromBooking=1')} style={styles.backButton}>
         <MaterialIcons name="arrow-back" size={24} color="#333" />
       </TouchableOpacity>
     </View>
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container}contentContainerStyle={{ paddingBottom: 40 }}>
       <Text style={styles.title}>Book Appointment</Text>
 
       {/* Salon Info */}
@@ -52,13 +70,47 @@ export default function AppointmentBooking() {
       </View>
 
       {/* Service Input */}
-      <Text style={styles.label}>Select Service</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="e.g. Haircut, Facial"
-        value={service}
-        onChangeText={setService}
-      />
+        <Text style={styles.label}>Select Service(s)</Text>
+        {availableServices.length === 0 ? (
+          <Text style={{ color: '#888', marginBottom: 10 }}>No services available</Text>
+        ) : (
+          availableServices.map((serviceName, idx) => (
+            <TouchableOpacity
+              key={idx}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginBottom: 8,
+              }}
+              onPress={() => {
+                setSelectedServices(prev =>
+                  prev.includes(serviceName)
+                    ? prev.filter(s => s !== serviceName)
+                    : [...prev, serviceName]
+                );
+              }}
+            >
+              <View
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 4,
+                  borderWidth: 2,
+                  borderColor: '#A65E5E',
+                  backgroundColor: selectedServices.includes(serviceName) ? '#A65E5E' : '#fff',
+                  marginRight: 10,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                {selectedServices.includes(serviceName) && (
+                  <MaterialIcons name="check" size={16} color="#fff" />
+                )}
+              </View>
+              <Text style={{ fontSize: 16 }}>{serviceName}</Text>
+            </TouchableOpacity>
+          ))
+        )}
 
       {/* Date Picker */}
       <Text style={styles.label}>Select Date</Text>
@@ -79,12 +131,28 @@ export default function AppointmentBooking() {
 
       {/* Time Input */}
       <Text style={styles.label}>Select Time</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="e.g. 10:30 AM"
-        value={time}
-        onChangeText={setTime}
-      />
+      <TouchableOpacity style={styles.input} onPress={() => setShowTimePicker(true)}>
+        <Text>{time ? time : 'e.g. 10:30 AM'}</Text>
+      </TouchableOpacity>
+      {showTimePicker && (
+        <DateTimePicker
+          value={date}
+          mode="time"
+          display="default"
+          onChange={(event, selectedTime) => {
+            setShowTimePicker(false);
+            if (selectedTime) {
+              // Format time as HH:MM AM/PM
+              const hours = selectedTime.getHours();
+              const minutes = selectedTime.getMinutes();
+              const ampm = hours >= 12 ? 'PM' : 'AM';
+              const formattedHours = ((hours + 11) % 12 + 1); // 12-hour format
+              const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+              setTime(`${formattedHours}:${formattedMinutes} ${ampm}`);
+            }
+          }}
+        />
+      )}
 
       {/* Stylist Input */}
       <Text style={styles.label}>Preferred Stylist (Optional)</Text>
@@ -135,7 +203,6 @@ const styles = StyleSheet.create({
   container: { 
     padding: 20, 
     backgroundColor: '#F7E8E8', 
-    flex: 1 
   },
   title: { 
     fontSize: 26, 
