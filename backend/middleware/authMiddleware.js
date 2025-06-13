@@ -1,29 +1,31 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/user'); // Import your User model
+const User = require('../models/user');
+const Salon = require('../models/salon');
 
 exports.protect = async (req, res, next) => {
     let token;
 
-    // Check if Authorization header exists and starts with Bearer
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         try {
-            // Extract token
             token = req.headers.authorization.split(' ')[1];
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-            // Verify token
-            const decoded = jwt.verify(token, process.env.JWT_SECRET); // ✅ use env variable
-
-            // Find user from database, exclude password
-            req.user = await User.findById(decoded.id).select('-password');
-
-            next(); // move to next middleware/route
+            // Try to find user in User model
+            let user = await User.findById(decoded.id).select('-password');
+            if (!user) {
+                // Try to find user in Salon model
+                user = await Salon.findById(decoded.id).select('-password');
+            }
+            if (!user) {
+                return res.status(401).json({ message: 'Not authorized, user not found' });
+            }
+            req.user = user;
+            next();
         } catch (error) {
             console.error(error);
             res.status(401).json({ message: 'Not authorized, token failed' });
         }
-    }
-
-    if (!token) {
+    } else {
         res.status(401).json({ message: 'Not authorized, no token' });
     }
 };

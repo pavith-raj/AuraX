@@ -1,7 +1,10 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, SafeAreaView, Animated, Pressable } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, SafeAreaView, Animated, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { getSalonById, updateSalonProfile } from '../../api/salon';
+import { useSalon } from '../../context/SalonContext';
+import * as ImagePicker from 'expo-image-picker';
 
 type IconName = keyof typeof MaterialIcons.glyphMap;
 
@@ -11,8 +14,21 @@ type MenuItem = {
   route: string;
 };
 
+type SalonType = {
+  profileImage?: string;
+  salonName?: string;
+  salonAddress?: string;
+  openingTime?: string;
+  closingTime?: string;
+  // add other fields as needed
+};
+
 export default function SalonProfile() {
   const router = useRouter();
+  const { salonId } = useSalon();
+  const [salon, setSalon] = useState<SalonType | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
 
   const menuItems: MenuItem[] = [
     {
@@ -72,72 +88,126 @@ export default function SalonProfile() {
     return { onPressIn, onPressOut };
   };
 
+  const pickAndUploadImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to make this work!');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+    if (!result.canceled) {
+      setUploading(true);
+      const imageUrl = result.assets[0].uri;
+      await updateSalonProfile(salonId, { profileImage: imageUrl });
+      setSalon({ ...salon, profileImage: imageUrl });
+      setUploading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!salonId) return;
+    setLoading(true);
+    getSalonById(salonId)
+      .then(data => {
+        setSalon(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [salonId]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#A65E5E" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 80 }}>
         {/* Header Section */}
-        <View style={styles.header}>
-          <View style={styles.profileInfo}>
-            <Image
-              source={{ uri: 'https://via.placeholder.com/100' }}
-              style={styles.profileImage}
-            />
-            <View style={styles.salonInfo}>
-              <Text style={styles.salonName}>My Salon</Text>
-              <Text style={styles.salonAddress}>123 Beauty Street, City</Text>
-              <Text style={styles.salonHours}>Open: 9:00 AM - 8:00 PM</Text>
-            </View>
-          </View>
+        <View style={styles.headerCard}>
+          {/* Edit (pencil) button: top right of card */}
           <TouchableOpacity
-            style={styles.editButton}
-            activeOpacity={0.7}
-            onPress={() => alert('Edit profile functionality coming soon!')}
+            style={styles.fabPencilButtonCard}
+            onPress={() => router.push('/owner/edit-profile')}
           >
-            <MaterialIcons name="edit" size={22} color="#A65E5E" />
+            <MaterialIcons name="edit" size={24} color="#fff" />
           </TouchableOpacity>
+          <View style={styles.headerContentCentered}>
+            <View style={{ position: 'relative', width: 120, height: 120, marginBottom: 14 }}>
+              <Image
+                source={{ uri: salon?.profileImage || 'https://via.placeholder.com/100' }}
+                style={styles.profileImageLarge}
+              />
+              {/* Camera button: bottom right of image */}
+              <TouchableOpacity
+                style={[styles.fabEditButton, styles.fabCameraButton]}
+                onPress={pickAndUploadImage}
+                disabled={uploading}
+              >
+                <MaterialIcons name={uploading ? 'hourglass-empty' : 'camera-alt'} size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.salonNameLarge}>{salon?.salonName || 'My Salon'}</Text>
+            <Text style={styles.salonAddress}>{salon?.salonAddress || '123 Beauty Street, City'}</Text>
+            <Text style={styles.salonHours}>{salon ? `Open: ${salon.openingTime || '9:00 AM'} - ${salon.closingTime || '8:00 PM'}` : 'Open: 9:00 AM - 8:00 PM'}</Text>
+          </View>
         </View>
 
         {/* Quick Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <View style={styles.statIconContainer}>
-              <MaterialIcons name="event" size={26} color="#A65E5E" />
+        <View style={styles.statsScrollModern}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 18 }}>
+            <View style={styles.statCardModern}>
+              <MaterialIcons name="event" size={28} color="#A65E5E" style={styles.statCardIconModern} />
+              <Text style={styles.statNumberLarge}>12</Text>
+              <Text style={styles.statLabelModern}>Today's Bookings</Text>
             </View>
-            <Text style={styles.statNumber}>12</Text>
-            <Text style={styles.statLabel}>Today's Bookings</Text>
-          </View>
-          <View style={styles.statItem}>
-            <View style={styles.statIconContainer}>
-              <MaterialIcons name="people" size={26} color="#A65E5E" />
+            <View style={styles.statCardModern}>
+              <MaterialIcons name="people" size={28} color="#A65E5E" style={styles.statCardIconModern} />
+              <Text style={styles.statNumberLarge}>5</Text>
+              <Text style={styles.statLabelModern}>In Queue</Text>
             </View>
-            <Text style={styles.statNumber}>5</Text>
-            <Text style={styles.statLabel}>In Queue</Text>
-          </View>
-          <View style={styles.statItem}>
-            <View style={styles.statIconContainer}>
-              <MaterialIcons name="content-cut" size={26} color="#A65E5E" />
+            <View style={styles.statCardModern}>
+              <MaterialIcons name="content-cut" size={28} color="#A65E5E" style={styles.statCardIconModern} />
+              <Text style={styles.statNumberLarge}>8</Text>
+              <Text style={styles.statLabelModern}>Services</Text>
             </View>
-            <Text style={styles.statNumber}>8</Text>
-            <Text style={styles.statLabel}>Services</Text>
+          </ScrollView>
+        </View>
+
+        {/* Recent Activity Section */}
+        <View style={styles.recentActivitySectionModern}>
+          <Text style={styles.recentActivityTitleModern}>Recent Activity</Text>
+          <View style={styles.recentActivityCardModern}>
+            <Text style={styles.recentActivityTextModern}>No recent activity.</Text>
           </View>
         </View>
 
         {/* Menu Grid */}
-        <View style={styles.menuGrid}>
+        <View style={styles.menuGridModernized}>
           {menuItems.map((item, index) => {
             const { onPressIn, onPressOut } = createPressHandlers(index, true);
             return (
               <AnimatedPressable
                 key={index}
-                style={[styles.menuItem, { transform: [{ scale: menuScaleValues[index] }] }]}
+                style={[styles.menuItemModernized, { transform: [{ scale: menuScaleValues[index] }] }]}
                 onPress={() => router.push(item.route)}
                 onPressIn={onPressIn}
                 onPressOut={onPressOut}
               >
-                <View style={styles.menuIconContainer}>
-                  <MaterialIcons name={item.icon} size={34} color="#A65E5E" />
+                <View style={styles.menuIconContainerModernized}>
+                  <MaterialIcons name={item.icon} size={36} color="#A65E5E" />
                 </View>
-                <Text style={styles.menuText}>{item.title}</Text>
+                <Text style={styles.menuTextModernized}>{item.title}</Text>
               </AnimatedPressable>
             );
           })}
@@ -174,131 +244,171 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
+  headerCard: {
     backgroundColor: 'white',
-    padding: 22,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0dede',
-    elevation: 3,
-    shadowColor: '#A65E5E',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-  },
-  profileInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  profileImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    marginRight: 18,
-    borderWidth: 3,
-    borderColor: '#A65E5E',
-  },
-  salonInfo: {
-    flex: 1,
-  },
-  salonName: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#6B2E2E',
-  },
-  salonAddress: {
-    fontSize: 17,
-    color: '#8B5E5E',
-    marginTop: 6,
-  },
-  salonHours: {
-    fontSize: 15,
-    color: '#A67A7A',
-    marginTop: 3,
-  },
-  editButton: {
-    padding: 12,
-    backgroundColor: '#F9EAEA',
     borderRadius: 24,
+    marginHorizontal: 18,
+    marginTop: 24,
+    marginBottom: 10,
+    paddingBottom: 32,
+    elevation: 5,
+    shadowColor: '#A65E5E',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    position: 'relative',
+  },
+  headerContentCentered: {
+    alignItems: 'center',
+    paddingTop: 32,
+    paddingBottom: 12,
+  },
+  profileImageLarge: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 4,
+    borderColor: '#A65E5E',
+    marginBottom: 14,
+  },
+  salonNameLarge: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#6B2E2E',
+    marginBottom: 4,
+  },
+  fabEditButton: {
+    position: 'absolute',
+    bottom: 0,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#A65E5E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    borderWidth: 3,
+    borderColor: 'white',
+    backgroundColor: '#A65E5E',
+  },
+  fabCameraButton: {
+    right: 0,
+  },
+  fabPencilButtonCard: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: '#A65E5E',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#A65E5E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    borderWidth: 3,
+    borderColor: 'white',
+    zIndex: 10,
+  },
+  statsScrollModern: {
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  statCardModern: {
+    backgroundColor: 'white',
+    borderRadius: 18,
+    padding: 26,
+    marginRight: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
     elevation: 2,
     shadowColor: '#A65E5E',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 24,
-    backgroundColor: 'white',
-    marginTop: 14,
-    marginHorizontal: 14,
-    borderRadius: 16,
-    elevation: 3,
-    shadowColor: '#A65E5E',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.10,
     shadowRadius: 6,
+    minWidth: 130,
+    minHeight: 120,
   },
-  statItem: {
-    alignItems: 'center',
-  },
-  statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F9EAEA',
-    justifyContent: 'center',
-    alignItems: 'center',
+  statCardIconModern: {
     marginBottom: 10,
   },
-  statNumber: {
-    fontSize: 28,
+  statNumberLarge: {
+    fontSize: 32,
     fontWeight: '700',
     color: '#6B2E2E',
   },
-  statLabel: {
-    fontSize: 15,
+  statLabelModern: {
+    fontSize: 16,
     color: '#8B5E5E',
-    marginTop: 6,
+    marginTop: 4,
   },
-  menuGrid: {
+  menuGridModernized: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 14,
-    marginTop: 14,
+    paddingHorizontal: 18,
+    marginTop: 18,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  menuItem: {
+  menuItemModernized: {
     width: '48%',
-    padding: 20,
+    padding: 28,
     backgroundColor: 'white',
-    margin: '1%',
-    borderRadius: 16,
+    marginBottom: 22,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 140,
-    elevation: 3,
+    height: 150,
+    elevation: 4,
     shadowColor: '#A65E5E',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.13,
+    shadowRadius: 8,
   },
-  menuIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  menuIconContainerModernized: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: '#F9EAEA',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
-  menuText: {
-    fontSize: 18,
+  menuTextModernized: {
+    fontSize: 20,
     color: '#6B2E2E',
     textAlign: 'center',
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  recentActivitySectionModern: {
+    marginTop: 24,
+    marginHorizontal: 18,
+  },
+  recentActivityTitleModern: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#6B2E2E',
+    marginBottom: 10,
+  },
+  recentActivityCardModern: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 22,
+    elevation: 2,
+    shadowColor: '#A65E5E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 5,
+  },
+  recentActivityTextModern: {
+    color: '#8B5E5E',
+    fontSize: 16,
   },
   bottomNav: {
     flexDirection: 'row',
@@ -323,5 +433,15 @@ const styles = StyleSheet.create({
     color: '#8B5E5E',
     marginTop: 6,
     fontWeight: '500',
+  },
+  salonAddress: {
+    fontSize: 17,
+    color: '#8B5E5E',
+    marginTop: 6,
+  },
+  salonHours: {
+    fontSize: 15,
+    color: '#A67A7A',
+    marginTop: 3,
   },
 });
