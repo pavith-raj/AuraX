@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
@@ -6,15 +6,23 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { bookAppointment } from '../../../api/appointments'; 
+import { fetchServices } from '../../../api/apiService';
+import { AuthContext } from '../../../context/AuthContext';
 
+// Define a type for Service
+interface Service {
+  _id: string;
+  name: string;
+}
 
 export default function AppointmentBooking() {
   const router = useRouter();
+  const { user } = useContext(AuthContext);
 
   const { salonId, salonName, salonAddress, salonRating } = useLocalSearchParams();
 
-  const [availableServices, setAvailableServices] = useState([]);
-  const [selectedServices, setSelectedServices] = useState([]);
+  const [availableServices, setAvailableServices] = useState<Service[]>([]);
+  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
 
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -22,6 +30,21 @@ export default function AppointmentBooking() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [stylist, setStylist] = useState('');
   const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    const loadServices = async () => {
+      try {
+        const services = await fetchServices(salonId);
+        setAvailableServices(services);
+      } catch (error) {
+        console.error('Failed to fetch services:', error);
+      }
+    };
+
+    if (salonId) {
+      loadServices();
+    }
+  }, [salonId]);
 
 
  const handleBooking = async () => {
@@ -31,19 +54,22 @@ export default function AppointmentBooking() {
   }
 
   const appointmentData = {
+    userId: user?._id,
     salonId,
-    services: selectedServices.map(service => service._id), // Send only IDs
-    date: date.toISOString().split('T')[0], // Format: YYYY-MM-DD
+    service: selectedServices[0]?._id,
+    serviceName: selectedServices[0]?.name,
+    date: date.toISOString().split('T')[0],
     time,
     stylist,
     notes,
   };
 
+  console.log('Booking appointment with data:', appointmentData);
   try {
     await bookAppointment(appointmentData);
     alert('Appointment booked!');
-    router.push('/(tabs)/appointments');
-  } catch (error) {
+    router.push('/(tabs)/appointments/appointments');
+  } catch (error: any) {
     console.error(error);
     alert(error?.response?.data?.message || 'Failed to book appointment');
   }

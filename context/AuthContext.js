@@ -1,6 +1,6 @@
 import React, { createContext, useEffect, useState } from 'react';
 import { getToken } from '../api/storage';
-import api from '../api/axiosInstance';
+import { getUserProfile } from '../api/user';
 
 export const AuthContext = createContext();
 
@@ -12,8 +12,8 @@ export const AuthProvider = ({ children }) => {
     const token = await getToken();
     if (token) {
       try {
-        const res = await api.get('/user/profile'); // Protected API
-        setUser(res.data.user);
+        const user = await getUserProfile(token);
+        setUser(user);
       } catch (err) {
         console.log('Token invalid:', err.message);
       }

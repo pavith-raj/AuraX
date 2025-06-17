@@ -10,12 +10,34 @@ const AppointmentsPage = () => {
   const [loading, setLoading] = useState(true);
   const [cancelingId, setCancelingId] = useState(null);
 
+  useEffect(() => {
+    console.log('User from AuthContext:', user);
+  }, [user]);
+
   const loadAppointments = async () => {
     setLoading(true);
     try {
+      console.log('Fetching appointments for user:', user?._id);
       const data = await fetchAppointments(user._id); 
-      setAppointments(data);
+      console.log('Fetched appointments:', data);
+      
+      // Sort appointments by date and time (earliest first)
+      const sortedAppointments = data.sort((a: any, b: any) => {
+        // First compare by date
+        const dateComparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+        if (dateComparison !== 0) {
+          return dateComparison;
+        }
+        
+        // If dates are the same, compare by time
+        const timeA = a.time.toLowerCase();
+        const timeB = b.time.toLowerCase();
+        return timeA.localeCompare(timeB);
+      });
+      
+      setAppointments(sortedAppointments);
     } catch (error) {
+      console.log('Error fetching appointments:', error);
       Alert.alert('Error', 'Failed to load appointments');
     }
     setLoading(false);
@@ -41,8 +63,11 @@ useEffect(() => {
   const renderItem = ({ item }) => (
     <View style={styles.appointmentCard}>
       <Text style={styles.salonName}>{item.salonName || item.salon || 'Salon'}</Text>
-      <Text style={styles.serviceName}>{item.service}</Text>
-      <Text style={styles.appointmentDetails}>{`${item.date}, ${item.time}`}</Text>
+      <Text style={styles.serviceName}>Service: {item.serviceName || item.service}</Text>
+      <Text style={styles.appointmentDetails}>Appointment ID: {item._id}</Text>
+      <Text style={styles.appointmentDetails}>Date: {item.date}, Time: {item.time}</Text>
+      <Text style={styles.appointmentDetails}>Stylist: {item.stylist || 'N/A'}</Text>
+      <Text style={styles.appointmentDetails}>Notes: {item.notes || 'None'}</Text>
       <Text style={[styles.statusText, { color: item.status === 'Scheduled' ? '#2e7d32' : '#888' }]}>
         {item.status}
       </Text>

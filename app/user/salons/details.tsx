@@ -46,16 +46,16 @@ export default function SalonDetails() {
             <Text style={styles.salonName}>{salon.salonName}</Text>
             <Text style={styles.title}>{salon.name}</Text>
             <View style={styles.infoRow}>
-              <Text style={styles.rating}>⭐ {salon.rating || 0}</Text>
-              <Text style={styles.phone}>📞 {salon.phone}</Text>
+              <Text style={styles.rating}>⭐ {String(salon.rating || 0)}</Text>
+              <Text style={styles.phone}>📞 {String(salon.phone || 'N/A')}</Text>
             </View>
-            <Text style={styles.address}>📍 {salon.salonAddress}</Text>
+            <Text style={styles.address}>📍 {String(salon.salonAddress || 'N/A')}</Text>
             {/* Add more details if needed */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>About</Text>
               <Text style={styles.sectionText}>
                 {/* You can add a description field in your backend and show it here */}
-                Welcome to {salon.salonName || salon.name}! We offer the best services in town.
+                Welcome to {String(salon.salonName || salon.name || 'Salon')}! We offer the best services in town.
               </Text>
             </View>
             {/* Services Section */}
@@ -63,7 +63,7 @@ export default function SalonDetails() {
               <Text style={styles.sectionTitle}>Services</Text>
               {salon.services && salon.services.length > 0 ? (
                 salon.services.map((service, idx) => (
-                  <Text key={idx} style={styles.serviceItem}>• {service}</Text>
+                  <Text key={idx} style={styles.serviceItem}>• {service.name || 'Unnamed Service'}</Text>
                 ))
               ) : (
                 <Text style={styles.sectionText}>No services listed.</Text>

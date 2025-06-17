@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -98,7 +97,7 @@ export default function SalonList() {
               salonId: salon._id,
               salonName: salon.name,
               salonAddress: salon.salonAddress,
-              salonRating: salon.rating,
+              salonRating: String(salon.rating),
             },
           });
         } else {
