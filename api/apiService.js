@@ -9,3 +9,29 @@ export const getUserProfile = async () => {
     throw error; // Throw the error to handle it in the UI
   }
 };
+
+export const fetchServices = async (salonId) => {
+  if (!salonId) throw new Error('No salonId provided to fetchServices');
+  const res = await api.get(`/salons/${salonId}`);
+  return res.data.services || [];
+};
+
+export const addService = async (salonId, name) => {
+  if (!salonId) throw new Error('No salonId provided to addService');
+  // Get the response from the API call
+  const res = await api.post(`/salons/${salonId}/services`, { name });
+  // Return the data from the response
+  return res.data;
+};
+
+export const editService = async (salonId, serviceId, name) => {
+  if (!salonId) throw new Error('No salonId provided to editService');
+  const res = await api.put(`/salons/${salonId}/services/${serviceId}`, { name });
+  return res.data;
+};
+
+export const deleteService = async (salonId, serviceId) => {
+  if (!salonId) throw new Error('No salonId provided to deleteService');
+  const res = await api.delete(`/salons/${salonId}/services/${serviceId}`);
+  return res.data; // Often delete returns a confirmation message or the deleted object ID
+};

@@ -5,6 +5,8 @@ import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
+import { bookAppointment } from '../../../api/appointments'; 
+
 
 export default function AppointmentBooking() {
   const router = useRouter();
@@ -22,31 +24,30 @@ export default function AppointmentBooking() {
   const [notes, setNotes] = useState('');
 
 
-  const handleBooking = () => {
-    console.log({
-      services: selectedServices,
-      date: date.toDateString(),
-      time,
-      stylist,
-      notes,
-    });
+ const handleBooking = async () => {
+  if (!selectedServices.length || !time) {
+    alert('Please select at least one service and time');
+    return;
+  }
+
+  const appointmentData = {
+    salonId,
+    services: selectedServices.map(service => service._id), // Send only IDs
+    date: date.toISOString().split('T')[0], // Format: YYYY-MM-DD
+    time,
+    stylist,
+    notes,
+  };
+
+  try {
+    await bookAppointment(appointmentData);
     alert('Appointment booked!');
     router.push('/(tabs)/appointments');
-  };
-  
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const response = await fetch(`http://192.168.45.81:5000/api/salons/${salonId}`);
-        const data = await response.json();
-        setAvailableServices(data.services || []);
-      } catch (error) {
-        setAvailableServices([]);
-        alert('Failed to fetch services');
-      }
-    };
-    if (salonId) fetchServices();
-  }, [salonId]);
+  } catch (error) {
+    console.error(error);
+    alert(error?.response?.data?.message || 'Failed to book appointment');
+  }
+};
 
   return (
     <>
@@ -74,42 +75,42 @@ export default function AppointmentBooking() {
         {availableServices.length === 0 ? (
           <Text style={{ color: '#888', marginBottom: 10 }}>No services available</Text>
         ) : (
-          availableServices.map((serviceName, idx) => (
-            <TouchableOpacity
-              key={idx}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                marginBottom: 8,
-              }}
-              onPress={() => {
-                setSelectedServices(prev =>
-                  prev.includes(serviceName)
-                    ? prev.filter(s => s !== serviceName)
-                    : [...prev, serviceName]
-                );
-              }}
-            >
-              <View
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 4,
-                  borderWidth: 2,
-                  borderColor: '#A65E5E',
-                  backgroundColor: selectedServices.includes(serviceName) ? '#A65E5E' : '#fff',
-                  marginRight: 10,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}
-              >
-                {selectedServices.includes(serviceName) && (
-                  <MaterialIcons name="check" size={16} color="#fff" />
-                )}
-              </View>
-              <Text style={{ fontSize: 16 }}>{serviceName}</Text>
-            </TouchableOpacity>
-          ))
+          availableServices.map((service) => (
+  <TouchableOpacity
+    key={service._id}
+    style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    }}
+    onPress={() => {
+      setSelectedServices(prev =>
+        prev.some(s => s._id === service._id)
+          ? prev.filter(s => s._id !== service._id)
+          : [...prev, service]
+      );
+    }}
+  >
+    <View
+      style={{
+        width: 20,
+        height: 20,
+        borderRadius: 4,
+        borderWidth: 2,
+        borderColor: '#A65E5E',
+        backgroundColor: selectedServices.some(s => s._id === service._id) ? '#A65E5E' : '#fff',
+        marginRight: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+    >
+      {selectedServices.some(s => s._id === service._id) && (
+        <MaterialIcons name="check" size={16} color="#fff" />
+      )}
+    </View>
+    <Text style={{ fontSize: 16 }}>{service.name}</Text>
+  </TouchableOpacity>
+))
         )}
 
       {/* Date Picker */}

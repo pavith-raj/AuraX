@@ -1,6 +1,14 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+
+const ServiceSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  price: { type: Number }, // optional
+  duration: { type: String }, // e.g. "30 min"
+  description: { type: String }
+});
+
 const salonSchema = new mongoose.Schema({
   // Authentication fields
   name: { type: String, required: true }, // Owner's name
@@ -15,7 +23,7 @@ const salonSchema = new mongoose.Schema({
     lat: { type: Number },
     lng: { type: Number }
   },
-  services: [{ type: String }], // Initial list, can be empty
+  services: [ServiceSchema], // Initial list, can be empty
   rating: { type: Number, default: 0 },
   openingTime: { type: String, default: '9:00 AM' },
   closingTime: { type: String, default: '8:00 PM' },
@@ -37,5 +45,8 @@ salonSchema.pre('save', async function (next) {
 salonSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
+
+
+
 
 module.exports = mongoose.model('Salon', salonSchema);

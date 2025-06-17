@@ -1,26 +1,60 @@
-import React from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
-import BottomNavBar from '../../../components/BottomNav';  // adjust the path if needed
-
-const appointmentsData = [
-  { id: '1', salon: 'Salon 1', service: 'Haircut', date: '2025-04-30', time: '10:00 AM', status: 'Scheduled' },
-  { id: '2', salon: 'Salon 2', service: 'Facial', date: '2025-05-02', time: '2:00 PM', status: 'Completed' },
-  { id: '3', salon: 'Salon 3', service: 'Manicure', date: '2025-05-05', time: '11:30 AM', status: 'Scheduled' },
-];
+import React, { useContext, useEffect, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import BottomNavBar from '../../../components/BottomNav';
+import { fetchAppointments, cancelAppointment } from '../../../api/appointments';
+import { AuthContext } from '../../../context/AuthContext';
 
 const AppointmentsPage = () => {
+  const { user } = useContext(AuthContext); 
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [cancelingId, setCancelingId] = useState(null);
+
+  const loadAppointments = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchAppointments(user._id); 
+      setAppointments(data);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to load appointments');
+    }
+    setLoading(false);
+  };
+
+useEffect(() => {
+  if (user && user._id) {
+    loadAppointments();
+  }
+}, [user]);
+
+  const handleCancel = async (id) => {
+    setCancelingId(id);
+    try {
+      await cancelAppointment(id);
+      loadAppointments();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to cancel appointment');
+    }
+    setCancelingId(null);
+  };
+
   const renderItem = ({ item }) => (
     <View style={styles.appointmentCard}>
-      <Text style={styles.salonName}>{item.salon}</Text>
+      <Text style={styles.salonName}>{item.salonName || item.salon || 'Salon'}</Text>
       <Text style={styles.serviceName}>{item.service}</Text>
       <Text style={styles.appointmentDetails}>{`${item.date}, ${item.time}`}</Text>
       <Text style={[styles.statusText, { color: item.status === 'Scheduled' ? '#2e7d32' : '#888' }]}>
         {item.status}
       </Text>
-
       {item.status === 'Scheduled' && (
-        <TouchableOpacity style={styles.cancelBtn}>
-          <Text style={styles.cancelBtnText}>Cancel Appointment</Text>
+        <TouchableOpacity
+          style={styles.cancelBtn}
+          onPress={() => handleCancel(item._id)}
+          disabled={cancelingId === item._id}
+        >
+          <Text style={styles.cancelBtnText}>
+            {cancelingId === item._id ? 'Cancelling...' : 'Cancel Appointment'}
+          </Text>
         </TouchableOpacity>
       )}
     </View>
@@ -28,17 +62,26 @@ const AppointmentsPage = () => {
 
   return (
     <>
-    <View style={styles.container}>
-      <Text style={styles.title}>Your Appointments</Text>
-      <FlatList
-        data={appointmentsData}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.appointmentList}
-      />
-    </View>
-        <BottomNavBar activeTab='appointments' />
-        </>
+      <View style={styles.container}>
+        <Text style={styles.title}>Your Appointments</Text>
+        {loading ? (
+          <ActivityIndicator size="large" color="#A65E5E" style={{ marginTop: 40 }} />
+        ) : (
+          <FlatList
+            data={appointments}
+            renderItem={renderItem}
+            keyExtractor={(item) => item._id}
+            contentContainerStyle={styles.appointmentList}
+            ListEmptyComponent={
+              <Text style={{ color: '#888', textAlign: 'center', marginTop: 40 }}>
+                No appointments found.
+              </Text>
+            }
+          />
+        )}
+      </View>
+      <BottomNavBar activeTab="appointments" />
+    </>
   );
 };
 

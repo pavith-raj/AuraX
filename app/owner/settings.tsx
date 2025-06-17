@@ -1,10 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function OwnerSettings() {
   const router = useRouter();
+
+  const handleLogout = async () => {
+    // Clear token/session (adjust as per your auth logic)
+    await AsyncStorage.removeItem('token');
+    // Optionally clear other user data here
+    Alert.alert('Logged out', 'You have been logged out.');
+    router.replace('auth/login'); // Adjust path to your login screen
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -16,7 +26,13 @@ export default function OwnerSettings() {
           <MaterialIcons name="edit" size={22} color="#A65E5E" style={{ marginRight: 12 }} />
           <Text style={styles.optionText}>Edit Profile</Text>
         </TouchableOpacity>
-        {/* Add more settings options here */}
+         <TouchableOpacity
+          style={styles.option}
+          onPress={handleLogout}
+        >
+          <MaterialIcons name="logout" size={22} color="#A65E5E" style={{ marginRight: 12 }} />
+          <Text style={styles.optionText}>Logout</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );

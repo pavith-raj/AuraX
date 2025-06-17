@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, SafeAreaView, Animated, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Animated, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { SafeAreaView, StatusBar } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { getSalonById, updateSalonProfile } from '../../api/salon';
@@ -20,7 +21,6 @@ type SalonType = {
   salonAddress?: string;
   openingTime?: string;
   closingTime?: string;
-  // add other fields as needed
 };
 
 export default function SalonProfile() {
@@ -123,6 +123,7 @@ export default function SalonProfile() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
+        <StatusBar backgroundColor="#EAD8D8" barStyle="dark-content" />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#A65E5E" />
         </View>
@@ -132,6 +133,7 @@ export default function SalonProfile() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar backgroundColor="#EAD8D8" barStyle="dark-content" />
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 80 }}>
         {/* Header Section */}
         <View style={styles.headerCard}>
@@ -200,7 +202,13 @@ export default function SalonProfile() {
               <AnimatedPressable
                 key={index}
                 style={[styles.menuItemModernized, { transform: [{ scale: menuScaleValues[index] }] }]}
-                onPress={() => router.push(item.route)}
+                onPress={() => {
+                  if (item.route === '/owner/services') {
+                    router.push({ pathname: item.route, params: { salonId } });
+                  } else {
+                    router.push(item.route);
+                  }
+                }}
                 onPressIn={onPressIn}
                 onPressOut={onPressOut}
               >
@@ -239,7 +247,7 @@ export default function SalonProfile() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff8f8',
+    backgroundColor: '#F7E8E8',
   },
   container: {
     flex: 1,

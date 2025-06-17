@@ -93,7 +93,7 @@ export default function SalonList() {
         if (fromBooking) {
           // Go to booking screen with salon info
           router.push({
-            pathname: '/book/appointmentBooking',
+            pathname: '/(tabs)/book/appointmentBooking',
             params: {
               salonId: salon._id,
               salonName: salon.name,

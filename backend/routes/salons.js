@@ -61,4 +61,52 @@ router.put('/:id', protect, authorizeRoles('owner'), async (req, res) => {
     }
 });
 
+// Add a service
+router.post('/:salonId/services', async (req, res) => {
+  try {
+    console.log('POST /:salonId/services', req.params.salonId, req.body);
+    const { name, price, duration, description } = req.body;
+    const salon = await Salon.findById(req.params.salonId);
+    console.log('Salon found:', salon ? salon._id : null);
+    if (!salon) return res.status(404).json({ message: 'Salon not found' });
+    salon.services.push({ name, price, duration, description });
+    await salon.save();
+    res.json({ services: salon.services });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Edit a service
+router.put('/:salonId/services/:serviceId', async (req, res) => {
+  try {
+    const { name, price, duration, description } = req.body;
+    const salon = await Salon.findById(req.params.salonId);
+    if (!salon) return res.status(404).json({ message: 'Salon not found' });
+    const service = salon.services.id(req.params.serviceId);
+    if (!service) return res.status(404).json({ message: 'Service not found' });
+    if (name !== undefined) service.name = name;
+    if (price !== undefined) service.price = price;
+    if (duration !== undefined) service.duration = duration;
+    if (description !== undefined) service.description = description;
+    await salon.save();
+    res.json({ services: salon.services });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Delete a service
+router.delete('/:salonId/services/:serviceId', async (req, res) => {
+  try {
+    const salon = await Salon.findById(req.params.salonId);
+    if (!salon) return res.status(404).json({ message: 'Salon not found' });
+    salon.services.id(req.params.serviceId).remove();
+    await salon.save();
+    res.json({ services: salon.services });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

@@ -20,6 +20,9 @@ app.use('/api/auth', authRoutes);
 const salonsRoutes = require('./routes/salons');
 app.use('/api/salons', salonsRoutes);
 
+const appointmentRoutes = require('./routes/appointments');
+app.use('/api/appointments', appointmentRoutes);
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

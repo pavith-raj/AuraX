@@ -1,18 +1,19 @@
-import axios from 'axios'; // or use fetch
+import api from './axiosInstance';
 
-const handleBooking = async () => {
-  try {
-    await axios.post('http://192.168.45.81:5000/api/appointments', {
-      salonId,
-      service,
-      date,
-      time,
-      stylist,
-      notes,
-    });
-    alert('Appointment booked!');
-    router.push('/(tabs)/appointments');
-  } catch (error) {
-    alert('Failed to book appointment');
-  }
+// Fetch all appointments for a user
+export const fetchAppointments = async (userId) => {
+  const res = await api.get(`/appointments/user/${userId}`);
+  return res.data;
+};
+
+// Book a new appointment
+export const bookAppointment = async (appointmentData) => {
+  const res = await api.post('/appointments', appointmentData);
+  return res.data;
+};
+
+// Cancel an appointment
+export const cancelAppointment = async (appointmentId) => {
+  const res = await api.put(`/appointments/${appointmentId}/cancel`);
+  return res.data;
 };
