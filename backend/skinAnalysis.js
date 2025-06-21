@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const axios = require('axios');
 
 const router = express.Router();
 
@@ -291,10 +292,9 @@ router.post('/analyze', upload.single('image'), async (req, res) => {
           return res.status(500).json({ error: analysisResult.error });
         }
         
-        // Get product recommendations using the updated logic
+        // Get product recommendations using the real dataset
         const predictedCondition = analysisResult.prediction;
-        const targetSkinType = predictionToSkinType[predictedCondition] || 'sensitive';
-        const recommendations = productsBySkinType[targetSkinType] || [];
+        const realProducts = getProductsForCondition(predictedCondition);
         
         // Enhanced skin problem detection
         const detectedProblems = [];
@@ -321,9 +321,9 @@ router.post('/analyze', upload.single('image'), async (req, res) => {
           success: true,
           prediction: analysisResult.prediction,
           confidence_scores: analysisResult.confidence_scores,
-          skin_type: targetSkinType,
+          skin_type: predictionToSkinType[predictedCondition] || 'sensitive',
           detected_problems: detectedProblems,
-          recommendations: { [targetSkinType]: recommendations.slice(0, 5) } // Send top 5 recommendations
+          recommendations: { [predictedCondition]: realProducts.slice(0, 6) } // Send top 6 real product recommendations
         });
         
       } catch (parseError) {
@@ -342,14 +342,13 @@ router.post('/analyze', upload.single('image'), async (req, res) => {
 router.get('/recommendations/:condition', (req, res) => {
   try {
     const condition = req.params.condition;
-    const targetSkinType = predictionToSkinType[condition] || 'sensitive';
-    const recommendations = productsBySkinType[targetSkinType] || [];
+    const realProducts = getProductsForCondition(condition);
     
     res.json({
       success: true,
       condition: condition,
-      skin_type: targetSkinType,
-      recommendations: { [targetSkinType]: recommendations.slice(0, 5) } // Send top 5
+      skin_type: predictionToSkinType[condition] || 'sensitive',
+      recommendations: { [condition]: realProducts.slice(0, 6) } // Send top 6 real products
     });
     
   } catch (error) {
@@ -362,19 +361,20 @@ router.get('/recommendations/:condition', (req, res) => {
 router.get('/recommendations/refined/:keyword', (req, res) => {
   try {
     const keyword = req.params.keyword.toLowerCase();
-    const allProducts = [...productsBySkinType.oily, ...productsBySkinType.sensitive, ...productsBySkinType.normal, ...productsBySkinType.dry, ...productsBySkinType.combination];
+    const allProducts = [...loadSkincareProducts(), ...loadMPProducts()];
     
     const uniqueProducts = Array.from(new Map(allProducts.map(p => [p.name, p])).values());
 
     const filteredProducts = uniqueProducts.filter(product => 
       product.name.toLowerCase().includes(keyword) || 
-      product.description.toLowerCase().includes(keyword)
+      (product.description && product.description.toLowerCase().includes(keyword)) ||
+      (product.effects && product.effects.toLowerCase().includes(keyword))
     );
 
     res.json({
       success: true,
       condition: req.params.keyword,
-      recommendations: { [req.params.keyword]: filteredProducts.slice(0, 10) } // Send top 10 refined
+      recommendations: { [req.params.keyword]: filteredProducts.slice(0, 10) } // Send top 10 refined real products
     });
 
   } catch (error) {
@@ -451,6 +451,170 @@ router.post('/acne-grade', upload.single('image'), async (req, res) => {
   } catch (error) {
     console.error('Acne severity analysis error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Load real skincare products from dataset
+const loadSkincareProducts = () => {
+  try {
+    const productsPath = path.join(__dirname, '../../dataset/skin/skincare_products_clean.csv');
+    const productsData = fs.readFileSync(productsPath, 'utf8');
+    const lines = productsData.split('\n');
+    const products = [];
+    
+    // Skip header
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line) {
+        const [name, url, type, ingredients, price] = line.split(',');
+        if (name && url && type) {
+          products.push({
+            name: name.replace(/"/g, ''),
+            url: url.replace(/"/g, ''),
+            type: type.replace(/"/g, ''),
+            ingredients: ingredients ? ingredients.replace(/"/g, '') : '',
+            price: price ? price.replace(/"/g, '') : 'N/A',
+            image: `https://via.placeholder.com/150x150/4A90E2/FFFFFF?text=${encodeURIComponent(name.split(' ')[0])}`,
+            brand: name.split(' ')[0],
+            description: `Professional ${type.toLowerCase()} for skin care`
+          });
+        }
+      }
+    }
+    return products;
+  } catch (error) {
+    console.error('Error loading skincare products:', error);
+    return [];
+  }
+};
+
+// Load MP-Skin Care Product Recommendation System
+const loadMPProducts = () => {
+  try {
+    const mpProductsPath = path.join(__dirname, '../../dataset/skin/MP-Skin Care Product Recommendation System3.csv');
+    const mpProductsData = fs.readFileSync(mpProductsPath, 'utf8');
+    const lines = mpProductsData.split('\n');
+    const products = [];
+    
+    // Skip header
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line) {
+        const parts = line.split(',');
+        if (parts.length >= 8) {
+          const [href, name, type, brand, effects, skintype, price, description] = parts;
+          if (name && href) {
+            products.push({
+              name: name.replace(/"/g, ''),
+              url: href.replace(/"/g, ''),
+              type: type ? type.replace(/"/g, '') : 'Skincare',
+              brand: brand ? brand.replace(/"/g, '') : 'Unknown',
+              effects: effects ? effects.replace(/"/g, '') : '',
+              skintype: skintype ? skintype.replace(/"/g, '') : '',
+              price: price ? price.replace(/"/g, '') : 'N/A',
+              description: description ? description.replace(/"/g, '') : '',
+              image: `https://via.placeholder.com/150x150/4A90E2/FFFFFF?text=${encodeURIComponent(name.split(' ')[0])}`
+            });
+          }
+        }
+      }
+    }
+    return products;
+  } catch (error) {
+    console.error('Error loading MP products:', error);
+    return [];
+  }
+};
+
+// Skin condition to product mapping
+const skinConditionMapping = {
+  'Acne': {
+    keywords: ['acne', 'pimple', 'blackhead', 'whitehead', 'breakout', 'blemish'],
+    productTypes: ['Face Wash', 'Toner', 'Serum', 'Moisturizer'],
+    effects: ['Acne-Free', 'Pore-Care', 'Oil-Control']
+  },
+  'Eczema': {
+    keywords: ['eczema', 'dermatitis', 'irritation', 'redness', 'dryness'],
+    productTypes: ['Moisturizer', 'Cream', 'Serum'],
+    effects: ['Soothing', 'Moisturizing', 'Hydrating']
+  },
+  'Rosacea': {
+    keywords: ['rosacea', 'redness', 'sensitivity', 'blood vessels'],
+    productTypes: ['Moisturizer', 'Serum', 'Cream'],
+    effects: ['Soothing', 'Anti-Redness', 'Calming']
+  },
+  'Actinic Keratosis': {
+    keywords: ['actinic', 'keratosis', 'sun damage', 'rough patches'],
+    productTypes: ['Sunscreen', 'Moisturizer', 'Serum'],
+    effects: ['UV-Protection', 'Anti-Aging', 'Brightening']
+  },
+  'Basal Cell Carcinoma': {
+    keywords: ['carcinoma', 'skin cancer', 'lesion'],
+    productTypes: ['Sunscreen', 'Protective'],
+    effects: ['UV-Protection', 'Protective']
+  }
+};
+
+// Get products for specific skin condition
+const getProductsForCondition = (condition) => {
+  const allProducts = [...loadSkincareProducts(), ...loadMPProducts()];
+  const mapping = skinConditionMapping[condition] || skinConditionMapping['Acne'];
+  
+  const recommendedProducts = allProducts.filter(product => {
+    // Check product type
+    const typeMatch = mapping.productTypes.some(type => 
+      product.type && product.type.toLowerCase().includes(type.toLowerCase())
+    );
+    
+    // Check effects
+    const effectsMatch = mapping.effects.some(effect => 
+      product.effects && product.effects.toLowerCase().includes(effect.toLowerCase())
+    );
+    
+    // Check keywords in name or description
+    const keywordMatch = mapping.keywords.some(keyword => 
+      (product.name && product.name.toLowerCase().includes(keyword.toLowerCase())) ||
+      (product.description && product.description.toLowerCase().includes(keyword.toLowerCase()))
+    );
+    
+    return typeMatch || effectsMatch || keywordMatch;
+  });
+  
+  // Return top 6 products
+  return recommendedProducts.slice(0, 6);
+};
+
+// Skincare products API endpoint
+router.get('/products/:condition', async (req, res) => {
+  try {
+    const condition = req.params.condition;
+    const products = getProductsForCondition(condition);
+    
+    if (products.length === 0) {
+      // Fallback to general skincare products
+      const allProducts = [...loadSkincareProducts(), ...loadMPProducts()];
+      const fallbackProducts = allProducts.slice(0, 6);
+      
+      res.json({
+        success: true,
+        products: fallbackProducts,
+        condition: condition,
+        message: 'General skincare recommendations'
+      });
+    } else {
+      res.json({
+        success: true,
+        products: products,
+        condition: condition,
+        message: `Products recommended for ${condition}`
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch products'
+    });
   }
 });
 
