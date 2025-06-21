@@ -13,14 +13,17 @@ import {
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { analyzeSkinImage, getManualRecommendations, getRefinedRecommendations } from '../../api/skinAnalysis';
+import { analyzeSkinImage, getManualRecommendations, getRefinedRecommendations, analyzeAcneSeverity } from '../../api/skinAnalysis';
 
 interface Product {
   name: string;
   url: string;
   type: string;
-  ingredients: string;
+  ingredients?: string;
   price: string;
+  image?: string;
+  brand?: string;
+  description?: string;
 }
 
 interface AnalysisResult {
@@ -30,12 +33,18 @@ interface AnalysisResult {
     [key: string]: Product[];
   };
   refined_prediction?: string;
+  acne_severity?: string;
+  acne_confidence?: { [key: string]: number };
+  detected_problems?: string[];
+  skin_type?: string;
 }
 
 const subCategories = {
-  acne: ['Pimples', 'Blackheads', 'Oiliness'],
-  bags: ['Dark Circles', 'Puffiness'],
-  redness: ['Irritation', 'Sensitivity'],
+  acne: ['Pimples', 'Blackheads', 'Whiteheads', 'Oiliness', 'Acne Scars'],
+  bags: ['Dark Circles', 'Puffiness', 'Under-eye Bags'],
+  redness: ['Irritation', 'Sensitivity', 'Rosacea'],
+  tan: ['Sun Damage', 'Hyperpigmentation', 'Uneven Skin Tone'],
+  dryness: ['Flaky Skin', 'Dehydration', 'Rough Texture'],
 };
 
 function isValidPrediction(prediction: string): prediction is keyof typeof subCategories {
@@ -49,7 +58,7 @@ export default function SkinAnalysis() {
   const [loading, setLoading] = useState(false);
   const [manualCondition, setManualCondition] = useState('');
 
-  const conditions = ['acne', 'bags', 'redness'];
+  const conditions = ['acne', 'bags', 'redness', 'tan', 'dryness'];
 
   const requestMediaLibraryPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -108,12 +117,34 @@ export default function SkinAnalysis() {
 
     setLoading(true);
     try {
-      const result = await analyzeSkinImage(selectedImage);
+      // Analyze general skin conditions
+      const skinResult = await analyzeSkinImage(selectedImage);
+      
+      // Analyze acne severity specifically
+      const acneResult = await analyzeAcneSeverity(selectedImage);
 
-      if (result.success) {
-        setAnalysisResult(result);
+      if (skinResult.success && acneResult.success) {
+        const combinedResult = {
+          ...skinResult,
+          acne_severity: acneResult.severity,
+          acne_confidence: acneResult.confidence_scores,
+        };
+        
+        // Fetch products for the detected condition
+        if (skinResult.prediction) {
+          try {
+            const productsResult = await getManualRecommendations(skinResult.prediction.toLowerCase());
+            if (productsResult.success) {
+              combinedResult.recommendations = { [skinResult.prediction]: productsResult.products };
+            }
+          } catch (error) {
+            console.log('Failed to fetch products:', error);
+          }
+        }
+        
+        setAnalysisResult(combinedResult);
       } else {
-        Alert.alert('Analysis Failed', result.error || 'Could not analyze the image.');
+        Alert.alert('Analysis Failed', 'Could not analyze the image completely.');
       }
     } catch (error) {
       console.error('Analysis error:', error);
@@ -171,11 +202,39 @@ export default function SkinAnalysis() {
     Linking.openURL(url);
   };
 
+  const getDetectedProblems = () => {
+    if (!analysisResult) return [];
+    
+    const problems = [];
+    
+    // Add detailed problems from backend
+    if (analysisResult.detected_problems) {
+      problems.push(...analysisResult.detected_problems);
+    }
+    
+    // Add acne severity if detected
+    if (analysisResult.acne_severity && analysisResult.acne_severity !== 'mild') {
+      problems.push(`Acne (${analysisResult.acne_severity})`);
+    }
+    
+    // Add specific acne-related issues based on confidence scores
+    if (analysisResult.acne_confidence) {
+      if (analysisResult.acne_confidence.severe > 0.3) {
+        problems.push('Severe Acne');
+      }
+      if (analysisResult.acne_confidence.moderate > 0.4) {
+        problems.push('Moderate Acne');
+      }
+    }
+    
+    return problems;
+  };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.headerCard}>
         <Text style={styles.title}>AI Skin Analysis</Text>
-        <Text style={styles.subtitle}>Upload a photo or select a condition to get personalized skincare recommendations.</Text>
+        <Text style={styles.subtitle}>Upload a photo to detect skin problems and get personalized skincare recommendations.</Text>
       </View>
 
       {/* Image Selection Card */}
@@ -201,125 +260,112 @@ export default function SkinAnalysis() {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.analyzeButtonText}>Analyze Image</Text>
+                <Text style={styles.buttonText}>Analyze Skin Problems</Text>
               )}
             </TouchableOpacity>
           </View>
         )}
       </View>
 
-      {/* Manual Condition Card */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Or Select Condition Manually</Text>
-        <View style={styles.conditionButtons}>
-          {conditions.map((condition) => (
-            <TouchableOpacity
-              key={condition}
-              style={[
-                styles.conditionButton,
-                manualCondition === condition && styles.conditionButtonActive,
-              ]}
-              onPress={() => setManualCondition(condition)}
-            >
-              <Text
-                style={[
-                  styles.conditionButtonText,
-                  manualCondition === condition && styles.conditionButtonTextActive,
-                ]}
-              >
-                {condition.charAt(0).toUpperCase() + condition.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        {manualCondition && (
-          <TouchableOpacity
-            style={[styles.analyzeButton, { alignSelf: 'center' }]}
-            onPress={() => handleGetManualRecommendations(manualCondition)}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.analyzeButtonText}>Get Recommendations</Text>
-            )}
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Analysis Results Card */}
+      {/* Analysis Results */}
       {analysisResult && (
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Analysis Results</Text>
-          <Text style={styles.resultTitle}>
-            Detected: <Text style={{ color: '#A65E5E' }}>
-              {analysisResult.refined_prediction 
-                ? analysisResult.refined_prediction.charAt(0).toUpperCase() + analysisResult.refined_prediction.slice(1)
-                : analysisResult.prediction.charAt(0).toUpperCase() + analysisResult.prediction.slice(1)}
-            </Text>
-          </Text>
+          <Text style={styles.sectionTitle}>Detected Skin Problems</Text>
           
-          <View style={styles.confidenceContainer}>
-            <Text style={styles.confidenceTitle}>Confidence Scores:</Text>
-            {Object.entries(analysisResult.confidence_scores).map(([condition, score]) => (
-              <View key={condition} style={styles.confidenceItem}>
-                 <Text style={styles.confidenceScore}>
-                  {condition.charAt(0).toUpperCase() + condition.slice(1)}
-                </Text>
-                <View style={styles.progressBar}>
-                    <View style={{ backgroundColor: '#A65E5E', width: `${score * 100}%`, height: '100%', borderRadius: 5 }} />
-                </View>
-                <Text style={styles.confidencePercent}>{(score * 100).toFixed(1)}%</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Refine Search Section */}
-          {isValidPrediction(analysisResult.prediction) && !analysisResult.refined_prediction && (
-            <View style={styles.refineSection}>
-              <Text style={styles.refineTitle}>Not quite right? Refine your results:</Text>
-              <View style={styles.conditionButtons}>
-                {subCategories[analysisResult.prediction].map((subCat: string) => (
-                  <TouchableOpacity
-                    key={subCat}
-                    style={styles.conditionButton}
-                    onPress={() => refineSearch(subCat)}
-                  >
-                    <Text style={styles.conditionButtonText}>{subCat}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+          {/* Main Detection */}
+          {analysisResult.prediction && (
+            <View style={styles.resultItem}>
+              <Text style={styles.problemTitle}>Primary Issue: {analysisResult.prediction}</Text>
+              <Text style={styles.confidenceText}>
+                Confidence: {(Math.max(...Object.values(analysisResult.confidence_scores)) * 100).toFixed(1)}%
+              </Text>
+              {analysisResult.skin_type && (
+                <Text style={styles.skinTypeText}>Skin Type: {analysisResult.skin_type}</Text>
+              )}
             </View>
           )}
+          
+          {/* Acne Severity */}
+          {analysisResult.acne_severity && (
+            <View style={styles.resultItem}>
+              <Text style={styles.problemTitle}>Acne Severity: {analysisResult.acne_severity}</Text>
+              {analysisResult.acne_confidence && (
+                <View style={styles.confidenceContainer}>
+                  {Object.entries(analysisResult.acne_confidence).map(([severity, confidence]) => (
+                    <Text key={severity} style={styles.confidenceText}>
+                      {severity}: {(confidence * 100).toFixed(1)}%
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+          
+          {/* Specific Problems */}
+          {getDetectedProblems().length > 0 && (
+            <View style={styles.resultItem}>
+              <Text style={styles.problemTitle}>Detected Issues:</Text>
+              {getDetectedProblems().map((problem, index) => (
+                <Text key={index} style={styles.problemText}>• {problem}</Text>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
 
-          <Text style={styles.recommendationsTitle}>Recommended Products:</Text>
+      {/* Product Recommendations */}
+      {analysisResult && analysisResult.recommendations && (
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Recommended Products</Text>
           {Object.entries(analysisResult.recommendations).map(([category, products]) => (
-            <View key={category} style={styles.categoryContainer}>
-              <Text style={styles.categoryTitle}>
-                {category.charAt(0).toUpperCase() + category.slice(1)}
-              </Text>
+            <View key={category} style={styles.recommendationSection}>
+              <Text style={styles.categoryTitle}>{category} Products:</Text>
               {products.map((product, index) => (
                 <TouchableOpacity
                   key={index}
                   style={styles.productCard}
-                  onPress={() => openProductUrl(product.url)}
+                  onPress={() => product.url ? openProductUrl(product.url) : null}
                 >
-                  <View>
+                  {product.image && (
+                    <Image source={{ uri: product.image }} style={styles.productImage} />
+                  )}
+                  <View style={styles.productInfo}>
                     <Text style={styles.productName}>{product.name}</Text>
-                    <Text style={styles.productType}>{product.type} - {product.price}</Text>
-                    <Text style={styles.productIngredients} numberOfLines={2}>
-                      {product.ingredients}
-                    </Text>
+                    {product.brand && (
+                      <Text style={styles.productBrand}>{product.brand}</Text>
+                    )}
+                    <Text style={styles.productType}>{product.type}</Text>
+                    {product.description && (
+                      <Text style={styles.productDescription} numberOfLines={2}>
+                        {product.description}
+                      </Text>
+                    )}
+                    <Text style={styles.productPrice}>{product.price}</Text>
                   </View>
-                  <Ionicons name="arrow-forward-circle" size={24} color="#A65E5E" />
                 </TouchableOpacity>
               ))}
             </View>
           ))}
         </View>
       )}
+
+      {/* Manual Condition Selection */}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Or Select a Condition</Text>
+        <View style={styles.conditionButtons}>
+          {conditions.map((condition) => (
+            <TouchableOpacity
+              key={condition}
+              style={styles.conditionButton}
+              onPress={() => handleGetManualRecommendations(condition)}
+            >
+              <Text style={styles.conditionButtonText}>{condition}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
     </ScrollView>
   );
 }
@@ -415,84 +461,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  analyzeButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  conditionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
+  resultItem: {
     marginBottom: 15,
   },
-  conditionButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#f8f8f8',
-    margin: 5,
-  },
-  conditionButtonActive: {
-    backgroundColor: '#A65E5E',
-    borderColor: '#A65E5E',
-  },
-  conditionButtonText: {
-    fontSize: 14,
-    color: '#3B3B3B',
-    fontWeight: '500',
-  },
-  conditionButtonTextActive: {
-    color: 'white',
-  },
-  resultTitle: {
-    fontSize: 18,
+  problemTitle: {
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#3B3B3B',
-    marginBottom: 15,
-    textAlign: 'center',
+    marginBottom: 5,
   },
-  confidenceContainer: {
-    marginBottom: 20,
-  },
-  confidenceTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#3B3B3B',
-    marginBottom: 10,
-  },
-  confidenceItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 8,
-  },
-  confidenceScore: {
+  confidenceText: {
     fontSize: 14,
     color: '#666',
-    width: '25%',
   },
-  progressBar: {
-      flex: 1,
-      height: 10,
-      backgroundColor: '#f0f0f0',
-      borderRadius: 5,
-      marginHorizontal: 10,
+  confidenceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  confidencePercent: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: '#3B3B3B',
-  },
-  recommendationsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+  problemText: {
+    fontSize: 14,
     color: '#3B3B3B',
-    marginBottom: 10,
-    marginTop: 10,
   },
-  categoryContainer: {
+  recommendationSection: {
     marginBottom: 15,
   },
   categoryTitle: {
@@ -510,15 +500,33 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 10,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  productImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 5,
+    marginRight: 10,
+  },
+  productInfo: {
+    flex: 1,
   },
   productName: {
     fontSize: 15,
     fontWeight: '600',
     color: '#3B3B3B',
   },
+  productBrand: {
+    fontSize: 13,
+    color: '#666',
+    marginVertical: 2,
+  },
   productType: {
+    fontSize: 13,
+    color: '#666',
+    marginVertical: 2,
+  },
+  productDescription: {
     fontSize: 13,
     color: '#666',
     marginVertical: 2,
@@ -528,24 +536,29 @@ const styles = StyleSheet.create({
     color: '#A65E5E',
     fontWeight: '500',
   },
-  productIngredients: {
-    fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
-    maxWidth: '90%',
+  conditionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    marginBottom: 15,
   },
-  refineSection: {
-    marginTop: 15,
-    marginBottom: 10,
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
+  conditionButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#f8f8f8',
+    margin: 5,
   },
-  refineTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+  conditionButtonText: {
+    fontSize: 14,
     color: '#3B3B3B',
-    textAlign: 'center',
-    marginBottom: 10,
+    fontWeight: '500',
+  },
+  skinTypeText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 5,
   },
 }); 
