@@ -26,6 +26,7 @@
     "dotenv": "^16.5.0",
     "expo": "53.0.10",
     "expo-blur": "~14.1.4",
+    "expo-camera": "^16.1.8",
     "expo-constants": "~17.1.5",
     "expo-dev-client": "~5.1.8",
     "expo-font": "~13.3.1",

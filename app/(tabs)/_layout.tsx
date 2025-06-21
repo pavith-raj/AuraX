@@ -23,8 +23,9 @@ export default function TabLayout() {
           display : 'none',
         },
       }}>
-     <Tabs.Screen
-        name="appointments"
+      
+      <Tabs.Screen
+        name="appointments/appointments"
         options={{
           title: 'Appointments',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
@@ -32,7 +33,7 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="products"
+        name="products/products"
         options={{
           title: 'Products',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="cart.fill" color={color} />,
@@ -40,7 +41,15 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="queue"
+        name="skinAnalysis"
+        options={{
+          title: 'Skin Analysis',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="camera.fill" color={color} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="queue/queue"
         options={{
           title: 'Queue',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
@@ -48,7 +57,7 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="profile"
+        name="profiles/profile"
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
@@ -56,7 +65,7 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="book"
+        name="book/appointmentBooking"
         options={{
           title: 'Book',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar.badge.plus" color={color} />,

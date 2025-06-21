@@ -8,17 +8,22 @@ import BottomNavBar from '../../components/BottomNav';
 
 const GOOGLE_API_KEY = 'AIzaSyD9AOX5rjhxoThJDlVYPtkCtLNg7Vivpls';
 
+interface Prediction {
+  description: string;
+  place_id: string;
+}
+
 export default function HomePage() {
   const router = useRouter();
 
   // State for location modal
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [locationQuery, setLocationQuery] = useState('');
-  const [locationPredictions, setLocationPredictions] = useState([]);
+  const [locationPredictions, setLocationPredictions] = useState<Prediction[]>([]);
   const [selectedLocation, setSelectedLocation] = useState('');
 
   // Fetch predictions from Google Places API
-  const fetchPredictions = async (input) => {
+  const fetchPredictions = async (input: string) => {
     setLocationQuery(input);
     if (input.length < 2) {
       setLocationPredictions([]);
@@ -33,7 +38,7 @@ export default function HomePage() {
   };
 
   // When a prediction is selected
-  const handleSelectPrediction = (item) => {
+  const handleSelectPrediction = (item: Prediction) => {
     setSelectedLocation(item.description);
     setLocationModalVisible(false);
     setLocationQuery('');
@@ -119,7 +124,7 @@ export default function HomePage() {
               />
               <FlatList
                 data={locationPredictions}
-                keyExtractor={item => item.place_id}
+                keyExtractor={(item) => item.place_id}
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     onPress={() => handleSelectPrediction(item)}
@@ -181,12 +186,12 @@ export default function HomePage() {
                 <Text style={styles.aiCardTitle}>Hairstyle Suggestions</Text>
               </View>
             </View>
-            <View style={styles.aiCard}>
+            <TouchableOpacity style={styles.aiCard} onPress={() => router.push('/skinAnalysis')}>
             <Image source={require('../../assets/images/cosmetic.jpg')} style={styles.aiImage} />
               <View style={styles.overlay}>
                 <Text style={styles.aiCardTitle}>Personalized Products</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </View>

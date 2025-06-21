@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import React, { useState, useEffect, useContext } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import BottomNavBar from '../../../components/BottomNav'; 
-import { getUserProfile, updateUserProfile} from '../../../api/user'; // Import API functions
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import BottomNavBar from '../../../components/BottomNav';
+import { updateUserProfile } from '../../../api/user'; // Corrected import
+import { AuthContext } from '../../../context/AuthContext'; // Import AuthContext
 
 // Type definition for user profile data
 type UserProfile = {
@@ -14,162 +14,138 @@ type UserProfile = {
 };
 
 const ProfilePage = () => {
-  const [userData, setUserData] = useState<UserProfile | null>(null); // Initial state is null until data is fetched
+  const { user, logout, loading: authLoading } = useContext(AuthContext); // Get user and logout from context
   const [editing, setEditing] = useState(false);
   const [updatedData, setUpdatedData] = useState<UserProfile>({
     name: '',
     email: '',
     phone: '',
   });
-  const [loading, setLoading] = useState(true); // Track loading state
-  const [error, setError] = useState<string>(''); // Specify type for error
+  const [error, setError] = useState<string>('');
   const navigation = useNavigation();
 
-  // Fetch the logged-in user's data
+  // Set initial form data when user is loaded from context
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const token = await AsyncStorage.getItem('token'); // Retrieve token
-        console.log('Token before API call:', token);
-        if (!token) throw new Error('No token found');
-        const data = await getUserProfile(token);
-        console.log('Fetched data:', data);  // Pass token
-        setUserData(data);
-        setUpdatedData(data);
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        setError('Failed to load user data');
-      } finally {
-        setLoading(false);
-      }
-    };
-  
-    fetchUserData();
-  }, []);
-  
+    if (user) {
+      setUpdatedData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+      });
+    }
+  }, [user]);
+
   const handleEditToggle = () => setEditing(!editing);
 
   const handleSaveChanges = async () => {
     try {
-      const token = await AsyncStorage.getItem('token'); // Retrieve token
-      if (!token) throw new Error('No token found');
-      
-      const updatedUser = await updateUserProfile(token, updatedData); // Pass token and data
-    // ✅ Correctly update userData to the latest user info
-    setUserData(updatedUser);
-    setEditing(false);
-  } catch (error) {
-    console.error('Error updating user profile:', error);
-    setError('Failed to save changes');
-  }
-};
-  
-  const handleLogout = async () => {
-    try {
-      await AsyncStorage.removeItem('token');
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'auth/login' }],
-      });
+      const updatedUser = await updateUserProfile(updatedData); // No token needed
+      // Optionally, you can update the context's user state here if the backend returns the updated user
+      setEditing(false);
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Error updating user profile:', error);
+      setError('Failed to save changes');
     }
   };
 
-  // Function to handle field changes in editing mode
+  const handleLogout = () => {
+    logout(); // Use logout from context
+    // The navigation logic to the login screen should be handled globally,
+    // possibly in a top-level component that observes the user state.
+    // For now, we assume the context change will trigger a redirect.
+  };
+
   const handleChange = (field: keyof UserProfile, value: string) => {
     setUpdatedData({ ...updatedData, [field]: value });
   };
 
-  if (loading) {
+  if (authLoading) {
     return (
-      <View style={styles.container}>
-        <Text>Loading...</Text>
+      <View style={[styles.container, styles.center]}>
+        <ActivityIndicator size="large" color="#A65E5E" />
       </View>
     );
   }
-  
-  if (!userData) {
+
+  if (!user) {
     return (
-      <View style={styles.container}>
-        <Text>No user data available</Text>
+      <View style={[styles.container, styles.center]}>
+        <Text>No user data available. Please log in.</Text>
+        <TouchableOpacity style={styles.logoutButton} onPress={() => navigation.navigate('auth/login' as never)}>
+            <Text style={styles.logoutButtonText}>Go to Login</Text>
+        </TouchableOpacity>
       </View>
     );
   }
-  
 
   return (
-<>
-  <ScrollView style={styles.container}>
-    <View style={styles.profileCard}>
-      <View style={styles.avatarCircle}>
-        <Text style={styles.avatarInitial}>
-          {userData?.name?.charAt(0).toUpperCase()}
-        </Text>
-      </View>
-      <Text style={styles.nameText}>{userData?.name}</Text>
-      <Text style={styles.emailText}>{userData?.email}</Text>
-      {userData?.role && (
-  <View style={styles.roleBadge}>
-    <Text style={styles.roleText}>{userData.role.toUpperCase()}</Text>
-  </View>
-)}
+    <>
+      <ScrollView style={styles.container}>
+        <View style={styles.profileCard}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarInitial}>
+              {user?.name?.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <Text style={styles.nameText}>{user?.name}</Text>
+          <Text style={styles.emailText}>{user?.email}</Text>
+          {user?.role && (
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleText}>{user.role.toUpperCase()}</Text>
+            </View>
+          )}
 
-      <TouchableOpacity style={styles.editButton} onPress={handleEditToggle}>
-        <Text style={styles.editButtonText}>{editing ? 'Cancel' : 'Edit Profile'}</Text>
-      </TouchableOpacity>
-    </View>
-
-    <View style={styles.infoSection}>
-      <Text style={styles.fieldLabel}>Phone Number</Text>
-      {editing ? (
-        <TextInput
-          style={styles.input}
-          value={updatedData.phone}
-          onChangeText={(text) => handleChange('phone', text)}
-        />
-      ) : (
-        <Text style={styles.text}>{userData?.phone}</Text>
-      )}
-
-      {editing && (
-        <>
-          <Text style={styles.fieldLabel}>Name</Text>
-          <TextInput
-            style={styles.input}
-            value={updatedData.name}
-            onChangeText={(text) => handleChange('name', text)}
-          />
-          <Text style={styles.fieldLabel}>Email</Text>
-          <TextInput
-            style={styles.input}
-            value={updatedData.email}
-            onChangeText={(text) => handleChange('email', text)}
-          />
-
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSaveChanges}>
-            <Text style={styles.saveBtnText}>Save Changes</Text>
+          <TouchableOpacity style={styles.editButton} onPress={handleEditToggle}>
+            <Text style={styles.editButtonText}>{editing ? 'Cancel' : 'Edit Profile'}</Text>
           </TouchableOpacity>
-        </>
-      )}
-    </View>
+        </View>
 
-    {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <View style={styles.infoSection}>
+          <Text style={styles.fieldLabel}>Phone Number</Text>
+          {editing ? (
+            <TextInput
+              style={styles.input}
+              value={updatedData.phone}
+              onChangeText={(text) => handleChange('phone', text)}
+              keyboardType="phone-pad"
+            />
+          ) : (
+            <Text style={styles.text}>{user?.phone}</Text>
+          )}
+          
+          {editing && (
+            <>
+              <Text style={styles.fieldLabel}>Email</Text>
+              <TextInput
+                style={styles.input}
+                value={updatedData.email}
+                onChangeText={(text) => handleChange('email', text)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
 
-    <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-      <Text style={styles.logoutButtonText}>Logout</Text>
-    </TouchableOpacity>
-    <TouchableOpacity
-      style={styles.changePwdButton}
-      onPress={() => navigation.navigate('change-password')}
-      >
-      <Text style={styles.changePwdText}>Change Password</Text>
-    </TouchableOpacity>
+              <Text style={styles.fieldLabel}>Name</Text>
+              <TextInput
+                style={styles.input}
+                value={updatedData.name}
+                onChangeText={(text) => handleChange('name', text)}
+              />
 
-  </ScrollView>
-  <BottomNavBar activeTab="profile" />
-</>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSaveChanges}>
+                <Text style={styles.saveBtnText}>Save Changes</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
 
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutButtonText}>Logout</Text>
+        </TouchableOpacity>
+      </ScrollView>
+      <BottomNavBar activeTab="profile" />
+    </>
   );
 };
 
@@ -179,6 +155,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF3F3',
     paddingHorizontal: 20,
     paddingTop: 60,
+  },
+  center: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   profileCard: {
     backgroundColor: '#FFFFFF',
@@ -224,7 +204,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 12,
   },
-  
   editButton: {
     backgroundColor: '#A65E5E',
     paddingVertical: 6,
@@ -248,69 +227,58 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#555',
-    marginTop: 12,
+    marginBottom: 4,
   },
   text: {
     fontSize: 16,
     color: '#333',
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    padding: 10,
+    borderRadius: 5,
   },
   input: {
     fontSize: 16,
-    backgroundColor: '#f9f9f9',
-    padding: 12,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
     marginBottom: 12,
   },
+  disabledInput: {
+      backgroundColor: '#f0f0f0',
+      color: '#888'
+  },
   saveBtn: {
-    backgroundColor: '#A65E5E',
-    paddingVertical: 12,
+    backgroundColor: '#5cb85c',
+    padding: 15,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 10,
   },
   saveBtnText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
   },
-  logoutButton: {
-    backgroundColor: '#A65E5E',
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 40,
-    marginHorizontal: 20,
-  },
-  logoutButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  changePwdButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#A65E5E',
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 20,
-    marginHorizontal: 20,
-  },
-  changePwdText: {
-    color: '#A65E5E',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  
   errorText: {
     color: 'red',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
+  },
+  logoutButton: {
+    backgroundColor: '#A65E5E',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logoutButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
-
 
 export default ProfilePage;

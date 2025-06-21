@@ -1,23 +1,21 @@
-import axios from 'axios';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.45.81:5000/api';
+import api from './axiosInstance';
 
 export const getSalons = async () => {
     try {
-        const response = await axios.get(`${API_URL}/salons`);
+        const response = await api.get('/salons');
         return response.data;
     } catch (error) {
-        console.error('Error fetching salons:', error.message);
+        console.error('Failed to fetch salons:', error);
         throw error;
     }
 };
-// Add this function to fetch a salon by ID
-export const getSalonById = async (id) => {
+
+export const getSalonDetails = async (id) => {
     try {
-        const response = await axios.get(`${API_URL}/salons/${id}`);
+        const response = await api.get(`/salons/${id}`);
         return response.data;
     } catch (error) {
-        console.error('Error fetching salon by ID:', error.message);
+        console.error(`Failed to fetch salon details for id ${id}:`, error);
         throw error;
     }
 };

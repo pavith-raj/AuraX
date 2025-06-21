@@ -1,36 +1,21 @@
-// app/api/user.js
-import axios from 'axios';  // Use axios or fetch to make API calls
+import api from './axiosInstance';
 
-const API_URL = 'http://192.168.45.81:5000/api';
-
-export const getUserProfile = async (token) => {
-  try {
-    const response = await axios.get(`${API_URL}/auth/profile`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    console.log('Full response:', response.data);
-    return response.data.user;
-  } catch (error) {
-    console.error('Error fetching user profile:', error.message);
-    throw error;
-  }
+export const getProfile = async () => {
+    try {
+        const response = await api.get('/auth/profile');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching user profile:', error);
+        throw error;
+    }
 };
 
-
-export const updateUserProfile = async (token, userData) => {
+export const updateUserProfile = async (userData) => {
   try {
-    const response = await axios.put(`${API_URL}/auth/profile`, userData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    console.log('Full response:', response.data);
-    return response.data.user;
-
+    const response = await api.put('/auth/profile', userData);
+    return response.data;
   } catch (error) {
-    console.error('Error updating user profile:', error.message);
+    console.error('Error updating user profile:', error);
     throw error;
   }
 };
