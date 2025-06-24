@@ -149,6 +149,7 @@ export default function AppointmentBooking() {
           value={date}
           mode="date"
           display="default"
+          minimumDate={new Date()}
           onChange={(event, selectedDate) => {
             setShowDatePicker(false);
             if (selectedDate) setDate(selectedDate);

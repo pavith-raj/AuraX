@@ -278,30 +278,14 @@ export default function SkinAnalysis() {
           {analysisResult.prediction && (
             <View style={styles.resultItem}>
               <Text style={styles.problemTitle}>Primary Issue: {analysisResult.prediction}</Text>
-              <Text style={styles.confidenceText}>
-                Confidence: {(Math.max(...Object.values(analysisResult.confidence_scores)) * 100).toFixed(1)}%
-              </Text>
+
               {analysisResult.skin_type && (
                 <Text style={styles.skinTypeText}>Skin Type: {analysisResult.skin_type}</Text>
               )}
             </View>
           )}
           
-          {/* Acne Severity */}
-          {analysisResult.acne_severity && (
-            <View style={styles.resultItem}>
-              <Text style={styles.problemTitle}>Acne Severity: {analysisResult.acne_severity}</Text>
-              {analysisResult.acne_confidence && (
-                <View style={styles.confidenceContainer}>
-                  {Object.entries(analysisResult.acne_confidence).map(([severity, confidence]) => (
-                    <Text key={severity} style={styles.confidenceText}>
-                      {severity}: {(confidence * 100).toFixed(1)}%
-                    </Text>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
+          
           
           {/* Specific Problems */}
           {getDetectedProblems().length > 0 && (
