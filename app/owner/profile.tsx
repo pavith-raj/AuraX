@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Animated, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Animated, Pressable, ActivityIndicator, Alert, Modal } from 'react-native';
 import { SafeAreaView, StatusBar } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { getSalonById, updateSalonProfile } from '../../api/salon';
 import { useSalon } from '../../context/SalonContext';
 import * as ImagePicker from 'expo-image-picker';
+import { fetchTodayBookingCount, fetchDateBookingCounts } from '../../api/appointments';
 
 type IconName = keyof typeof MaterialIcons.glyphMap;
 
@@ -29,6 +30,10 @@ export default function SalonProfile() {
   const [salon, setSalon] = useState<SalonType | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [todayCount, setTodayCount] = useState<number>(0);
+  const [calendarVisible, setCalendarVisible] = useState(false);
+  const [dateCounts, setDateCounts] = useState<{ [date: string]: number }>({});
+  const [calendarLoading, setCalendarLoading] = useState(false);
 
   const menuItems: MenuItem[] = [
     {
@@ -120,6 +125,22 @@ export default function SalonProfile() {
       .catch(() => setLoading(false));
   }, [salonId]);
 
+  useEffect(() => {
+    if (!salonId) return;
+    fetchTodayBookingCount(salonId).then(setTodayCount);
+  }, [salonId]);
+
+  const openCalendar = async () => {
+    setCalendarVisible(true);
+    setCalendarLoading(true);
+    try {
+      const counts = await fetchDateBookingCounts(salonId);
+      setDateCounts(counts);
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -135,6 +156,8 @@ export default function SalonProfile() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor="#EAD8D8" barStyle="dark-content" />
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 80 }}>
+        {/* Add extra space at the top */}
+        <View style={{ height: 32 }} />
         {/* Header Section */}
         <View style={styles.headerCard}>
           {/* Edit (pencil) button: top right of card */}
@@ -168,11 +191,12 @@ export default function SalonProfile() {
         {/* Quick Stats */}
         <View style={styles.statsScrollModern}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 18 }}>
-            <View style={styles.statCardModern}>
+            {/* Today's Bookings Card with calendar modal */}
+            <Pressable onPress={openCalendar} style={styles.statCardModern}>
               <MaterialIcons name="event" size={28} color="#A65E5E" style={styles.statCardIconModern} />
-              <Text style={styles.statNumberLarge}>12</Text>
+              <Text style={styles.statNumberLarge}>{todayCount}</Text>
               <Text style={styles.statLabelModern}>Today's Bookings</Text>
-            </View>
+            </Pressable>
             <View style={styles.statCardModern}>
               <MaterialIcons name="people" size={28} color="#A65E5E" style={styles.statCardIconModern} />
               <Text style={styles.statNumberLarge}>5</Text>
@@ -240,6 +264,23 @@ export default function SalonProfile() {
           );
         })}
       </View>
+
+      {/* Calendar Modal */}
+      <Modal visible={calendarVisible} animationType="slide" transparent={true} onRequestClose={() => setCalendarVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, width: 340, maxHeight: '80%' }}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#A65E5E', marginBottom: 12, textAlign: 'center' }}>Bookings Calendar</Text>
+            <Pressable onPress={() => setCalendarVisible(false)} style={{ position: 'absolute', top: 12, right: 16 }}>
+              <MaterialIcons name="close" size={24} color="#A65E5E" />
+            </Pressable>
+            {calendarLoading ? (
+              <ActivityIndicator size="large" color="#A65E5E" style={{ marginTop: 40 }} />
+            ) : (
+              <CalendarGrid dateCounts={dateCounts} />
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -453,3 +494,88 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
 });
+
+// CalendarGrid component (simple month grid with booking counts)
+function CalendarGrid({ dateCounts }: { dateCounts: { [date: string]: number } }) {
+  const [month, setMonth] = useState(() => {
+    const today = new Date();
+    return today.getMonth();
+  });
+  const [year, setYear] = useState(() => {
+    const today = new Date();
+    return today.getFullYear();
+  });
+  const today = new Date();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startDay = firstDay.getDay();
+  const weeks: (number | null)[][] = [[]];
+  let week = weeks[0];
+  for (let i = 0; i < startDay; i++) week.push(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    if (week.length === 7) {
+      week = [];
+      weeks.push(week);
+    }
+    week.push(d);
+  }
+  while (week.length < 7) week.push(null);
+  // Helper to format date as yyyy-mm-dd with leading zeros
+  const fmt = (d: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const goToPrevMonth = () => {
+    if (month === 0) {
+      setMonth(11);
+      setYear(y => y - 1);
+    } else {
+      setMonth(m => m - 1);
+    }
+  };
+  const goToNextMonth = () => {
+    if (month === 11) {
+      setMonth(0);
+      setYear(y => y + 1);
+    } else {
+      setMonth(m => m + 1);
+    }
+  };
+  const goToPrevYear = () => setYear(y => y - 1);
+  const goToNextYear = () => setYear(y => y + 1);
+  return (
+    <View>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 10 }}>
+        <Pressable onPress={goToPrevYear} style={{ padding: 4 }}>
+          <MaterialIcons name="keyboard-double-arrow-left" size={22} color="#A65E5E" />
+        </Pressable>
+        <Pressable onPress={goToPrevMonth} style={{ padding: 4 }}>
+          <MaterialIcons name="chevron-left" size={24} color="#A65E5E" />
+        </Pressable>
+        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#A65E5E', marginHorizontal: 8 }}>{monthNames[month]} {year}</Text>
+        <Pressable onPress={goToNextMonth} style={{ padding: 4 }}>
+          <MaterialIcons name="chevron-right" size={24} color="#A65E5E" />
+        </Pressable>
+        <Pressable onPress={goToNextYear} style={{ padding: 4 }}>
+          <MaterialIcons name="keyboard-double-arrow-right" size={22} color="#A65E5E" />
+        </Pressable>
+      </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day => (
+          <Text key={day} style={{ width: 36, textAlign: 'center', color: '#A65E5E', fontWeight: 'bold' }}>{day}</Text>
+        ))}
+      </View>
+      {weeks.map((week, i) => (
+        <View key={i} style={{ flexDirection: 'row', marginBottom: 2 }}>
+          {week.map((d, j) => (
+            <View key={j} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: d && dateCounts[fmt(d)] ? '#F7E8E8' : 'transparent' }}>
+              <Text style={{ color: '#6B2E2E', fontWeight: d === today.getDate() && month === today.getMonth() && year === today.getFullYear() ? 'bold' : 'normal' }}>{d ? d : ''}</Text>
+              {d && dateCounts[fmt(d)] ? (
+                <Text style={{ fontSize: 12, color: '#A65E5E' }}>{dateCounts[fmt(d)]}</Text>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}

@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
-import { bookAppointment } from '../../../api/appointments'; 
+import { bookAppointment, fetchAvailableSlots } from '../../../api/appointments'; 
 import { fetchServices } from '../../../api/apiService';
 import { AuthContext } from '../../../context/AuthContext';
 
@@ -31,6 +31,9 @@ export default function AppointmentBooking() {
   const [stylist, setStylist] = useState('');
   const [notes, setNotes] = useState('');
 
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
   useEffect(() => {
     const loadServices = async () => {
       try {
@@ -46,34 +49,58 @@ export default function AppointmentBooking() {
     }
   }, [salonId]);
 
+  // Fetch available slots when date or salonId changes
+  useEffect(() => {
+    const fetchSlots = async () => {
+      if (!salonId || !date) return;
+      setLoadingSlots(true);
+      try {
+        const slots = await fetchAvailableSlots(date.toISOString().split('T')[0], salonId);
+        setAvailableSlots(slots);
+      } catch (error) {
+        setAvailableSlots([]);
+      } finally {
+        setLoadingSlots(false);
+      }
+    };
+    fetchSlots();
+  }, [date, salonId]);
 
- const handleBooking = async () => {
-  if (!selectedServices.length || !time) {
-    alert('Please select at least one service and time');
-    return;
-  }
-
-  const appointmentData = {
-    userId: user?._id,
-    salonId,
-    service: selectedServices[0]?._id,
-    serviceName: selectedServices[0]?.name,
-    date: date.toISOString().split('T')[0],
-    time,
-    stylist,
-    notes,
+  const handleBooking = async () => {
+    if (!selectedServices.length || !time) {
+      alert('Please select at least one service and time');
+      return;
+    }
+    if (!availableSlots.includes(time)) {
+      alert('Selected time slot is not available. Please choose another.');
+      return;
+    }
+    const appointmentData = {
+      userId: user?._id,
+      salonId,
+      service: selectedServices[0]?._id,
+      serviceName: selectedServices[0]?.name,
+      date: date.toISOString().split('T')[0],
+      time,
+      stylist,
+      notes,
+    };
+    try {
+      await bookAppointment(appointmentData);
+      alert('Appointment booked!');
+      router.push('/(tabs)/appointments/appointments');
+    } catch (error: any) {
+      if (error?.response?.status === 409) {
+        alert('Slot not available. Please select another time.');
+        // Refresh available slots
+        const slots = await fetchAvailableSlots(date.toISOString().split('T')[0], salonId);
+        setAvailableSlots(slots);
+        setTime('');
+      } else {
+        alert(error?.response?.data?.message || 'Failed to book appointment');
+      }
+    }
   };
-
-  console.log('Booking appointment with data:', appointmentData);
-  try {
-    await bookAppointment(appointmentData);
-    alert('Appointment booked!');
-    router.push('/(tabs)/appointments/appointments');
-  } catch (error: any) {
-    console.error(error);
-    alert(error?.response?.data?.message || 'Failed to book appointment');
-  }
-};
 
   return (
     <>
@@ -159,27 +186,29 @@ export default function AppointmentBooking() {
 
       {/* Time Input */}
       <Text style={styles.label}>Select Time</Text>
-      <TouchableOpacity style={styles.input} onPress={() => setShowTimePicker(true)}>
-        <Text>{time ? time : 'e.g. 10:30 AM'}</Text>
-      </TouchableOpacity>
-      {showTimePicker && (
-        <DateTimePicker
-          value={date}
-          mode="time"
-          display="default"
-          onChange={(event, selectedTime) => {
-            setShowTimePicker(false);
-            if (selectedTime) {
-              // Format time as HH:MM AM/PM
-              const hours = selectedTime.getHours();
-              const minutes = selectedTime.getMinutes();
-              const ampm = hours >= 12 ? 'PM' : 'AM';
-              const formattedHours = ((hours + 11) % 12 + 1); // 12-hour format
-              const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
-              setTime(`${formattedHours}:${formattedMinutes} ${ampm}`);
-            }
-          }}
-        />
+      {loadingSlots ? (
+        <Text style={{ color: '#888' }}>Loading available slots...</Text>
+      ) : availableSlots.length === 0 ? (
+        <Text style={{ color: 'red' }}>No slots available for this date.</Text>
+      ) : (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 }}>
+          {availableSlots.map(slot => (
+            <TouchableOpacity
+              key={slot}
+              style={{
+                backgroundColor: time === slot ? '#A65E5E' : '#fff',
+                borderColor: '#A65E5E',
+                borderWidth: 1,
+                borderRadius: 6,
+                padding: 8,
+                margin: 4,
+              }}
+              onPress={() => setTime(slot)}
+            >
+              <Text style={{ color: time === slot ? '#fff' : '#A65E5E' }}>{slot}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       )}
 
       {/* Stylist Input */}

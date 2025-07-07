@@ -19,3 +19,15 @@ export const getSalonDetails = async (id) => {
         throw error;
     }
 };
+
+export const getSalonById = getSalonDetails;
+
+export const updateSalonProfile = async (salonId, updateData) => {
+    try {
+        const response = await api.put(`/salons/${salonId}`, updateData);
+        return response.data;
+    } catch (error) {
+        console.error(`Failed to update salon profile for id ${salonId}:`, error);
+        throw error;
+    }
+};

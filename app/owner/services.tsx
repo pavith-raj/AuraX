@@ -8,15 +8,15 @@ export default function ServicesPage() {
   const router = useRouter();
   const { salonId } = useLocalSearchParams();
 
-  const [services, setServices] = useState([]);
+  const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [serviceName, setServiceName] = useState('');
-  const [editingService, setEditingService] = useState(null);
+  const [editingService, setEditingService] = useState<any | null>(null);
 
   // Animated pressable for list items and buttons
   const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-  const scaleValues = useRef([]).current;
+  const scaleValues = useRef<Animated.Value[]>([]).current;
 
   // Fetch services from backend using the shared API helper
   const loadServices = async () => {
@@ -55,7 +55,7 @@ export default function ServicesPage() {
   };
 
   // Delete service using the shared API helper
-  const handleDelete = async (serviceId) => {
+  const handleDelete = async (serviceId: string) => {
     setLoading(true);
     try {
       await deleteService(salonId, serviceId);
@@ -67,7 +67,7 @@ export default function ServicesPage() {
   };
 
   // Animated press handlers
-  const createPressHandlers = (index) => {
+  const createPressHandlers = (index: number) => {
     if (!scaleValues[index]) scaleValues[index] = new Animated.Value(1);
     const onPressIn = () => {
       Animated.spring(scaleValues[index], {
@@ -86,7 +86,7 @@ export default function ServicesPage() {
     return { onPressIn, onPressOut };
   };
 
-  const renderItem = ({ item, index }) => {
+  const renderItem = ({ item, index }: { item: any; index: number }) => {
     const { onPressIn, onPressOut } = createPressHandlers(index);
     return (
       <AnimatedPressable
@@ -97,7 +97,11 @@ export default function ServicesPage() {
       >
         <Text style={styles.serviceName}>{item.name}</Text>
         <View style={styles.actions}>
-          <TouchableOpacity onPress={() => startEdit(item)} style={styles.actionButton}>
+          <TouchableOpacity onPress={() => {
+            setEditingService(item);
+            setServiceName(item.name);
+            setModalVisible(true);
+          }} style={styles.actionButton}>
             <MaterialIcons name="edit" size={20} color="#007AFF" />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => handleDelete(item._id)} style={styles.actionButton}>
@@ -119,13 +123,14 @@ export default function ServicesPage() {
           <MaterialIcons name="add" size={28} color="#007AFF" />
         </TouchableOpacity>
       </View>
+      <View style={{ height: 32 }} />
       {loading && <ActivityIndicator size="large" color="#A65E5E" style={{ marginTop: 20 }} />}
       <FlatList
         data={services}
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={!loading && <Text style={styles.emptyText}>No services available.</Text>}
+        ListEmptyComponent={() => !loading && services.length === 0 ? <Text style={styles.emptyText}>No services available.</Text> : null}
       />
 
       {/* Modal for Add/Edit */}
