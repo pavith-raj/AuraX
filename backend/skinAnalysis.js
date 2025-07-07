@@ -272,7 +272,7 @@ router.post('/analyze', upload.single('image'), async (req, res) => {
       error += data.toString();
     });
     
-    pythonProcess.on('close', (code) => {
+    pythonProcess.on('close', async (code) => {
       // Clean up uploaded file
       try {
         fs.unlinkSync(imagePath);
@@ -292,38 +292,38 @@ router.post('/analyze', upload.single('image'), async (req, res) => {
           return res.status(500).json({ error: analysisResult.error });
         }
         
-        // Get product recommendations using the real dataset
-        const predictedCondition = analysisResult.prediction;
-        const realProducts = getProductsForCondition(predictedCondition);
+        // Label correction for known typos
+        const labelCorrectionMap = { 'Eczemaa': 'Eczema' };
+        const correctedPrediction = labelCorrectionMap[analysisResult.prediction] || analysisResult.prediction;
+        let realProducts = await fetchWalmartProducts(correctedPrediction);
+        if (!realProducts || realProducts.length === 0) {
+          realProducts = await fetchWalmartProducts('skincare');
+        }
         
         // Enhanced skin problem detection
         const detectedProblems = [];
-        
-        // Add main condition
-        if (predictedCondition) {
-          detectedProblems.push(predictedCondition);
+        if (correctedPrediction) {
+          detectedProblems.push(correctedPrediction);
         }
-        
-        // Add specific problems based on condition
-        if (predictedCondition === 'Acne') {
+        if (correctedPrediction === 'Acne') {
           detectedProblems.push('Pimples', 'Blackheads', 'Whiteheads', 'Oiliness');
-        } else if (predictedCondition === 'Eczemaa') {
+        } else if (correctedPrediction === 'Eczema') {
           detectedProblems.push('Dryness', 'Irritation', 'Redness', 'Flaking');
-        } else if (predictedCondition === 'Rosacea') {
+        } else if (correctedPrediction === 'Rosacea') {
           detectedProblems.push('Redness', 'Sensitivity', 'Visible Blood Vessels');
-        } else if (predictedCondition === 'Actinic Keratosis') {
+        } else if (correctedPrediction === 'Actinic Keratosis') {
           detectedProblems.push('Sun Damage', 'Rough Patches', 'Pre-cancerous Lesions');
-        } else if (predictedCondition === 'Basal Cell Carcinoma') {
+        } else if (correctedPrediction === 'Basal Cell Carcinoma') {
           detectedProblems.push('Skin Cancer', 'Medical Attention Required');
         }
         
         res.json({
           success: true,
-          prediction: analysisResult.prediction,
+          prediction: correctedPrediction,
           confidence_scores: analysisResult.confidence_scores,
-          skin_type: predictionToSkinType[predictedCondition] || 'sensitive',
+          skin_type: predictionToSkinType[correctedPrediction] || 'sensitive',
           detected_problems: detectedProblems,
-          recommendations: { [predictedCondition]: realProducts.slice(0, 6) } // Send top 6 real product recommendations
+          recommendations: { [correctedPrediction]: realProducts.slice(0, 6) }
         });
         
       } catch (parseError) {
@@ -454,166 +454,70 @@ router.post('/acne-grade', upload.single('image'), async (req, res) => {
   }
 });
 
-// Load real skincare products from dataset
-const loadSkincareProducts = () => {
+// Map skin conditions to Walmart search terms
+const walmartSearchTerms = {
+  'Acne': 'acne cleanser',
+  'Eczema': 'eczema moisturizer',
+  'Rosacea': 'rosacea cream',
+  'Actinic Keratosis': 'sunscreen',
+  'Basal Cell Carcinoma': 'sunscreen',
+};
+
+// Fetch products from Walmart API
+const fetchWalmartProducts = async (condition) => {
+  const searchTerm = walmartSearchTerms[condition] || 'skincare';
+  const url = 'https://walmart-api4.p.rapidapi.com/walmart-serp.php';
+  const params = { url: `https://www.walmart.com/search?q=${encodeURIComponent(searchTerm)}` };
+  const headers = {
+    'x-rapidapi-host': 'walmart-api4.p.rapidapi.com',
+    'x-rapidapi-key': 'ef25a90676msh148877996cdd513p18addcjsn2629af12ee7a',
+  };
   try {
-    const productsPath = path.join(__dirname, '../../dataset/skin/skincare_products_clean.csv');
-    const productsData = fs.readFileSync(productsPath, 'utf8');
-    const lines = productsData.split('\n');
-    const products = [];
-    
-    // Skip header
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (line) {
-        const [name, url, type, ingredients, price] = line.split(',');
-        if (name && url && type) {
-          products.push({
-            name: name.replace(/"/g, ''),
-            url: url.replace(/"/g, ''),
-            type: type.replace(/"/g, ''),
-            ingredients: ingredients ? ingredients.replace(/"/g, '') : '',
-            price: price ? price.replace(/"/g, '') : 'N/A',
-            image: `https://via.placeholder.com/150x150/4A90E2/FFFFFF?text=${encodeURIComponent(name.split(' ')[0])}`,
-            brand: name.split(' ')[0],
-            description: `Professional ${type.toLowerCase()} for skin care`
-          });
-        }
-      }
+    const response = await axios.get(url, { headers, params });
+    if (response.data && response.data.body && Array.isArray(response.data.body.products)) {
+      // Map Walmart product fields to your frontend's expected format
+      return response.data.body.products.slice(0, 6).map(product => ({
+        name: product.title,
+        url: product.link,
+        type: 'Walmart',
+        price: product.price && product.price.currentPrice ? product.price.currentPrice : 'N/A',
+        image: product.image,
+        brand: 'Walmart',
+        description: '',
+      }));
     }
-    return products;
+    return [];
   } catch (error) {
-    console.error('Error loading skincare products:', error);
+    console.error('Walmart API error:', error);
     return [];
   }
 };
 
-// Load MP-Skin Care Product Recommendation System
-const loadMPProducts = () => {
-  try {
-    const mpProductsPath = path.join(__dirname, '../../dataset/skin/MP-Skin Care Product Recommendation System3.csv');
-    const mpProductsData = fs.readFileSync(mpProductsPath, 'utf8');
-    const lines = mpProductsData.split('\n');
-    const products = [];
-    
-    // Skip header
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (line) {
-        const parts = line.split(',');
-        if (parts.length >= 8) {
-          const [href, name, type, brand, effects, skintype, price, description] = parts;
-          if (name && href) {
-            products.push({
-              name: name.replace(/"/g, ''),
-              url: href.replace(/"/g, ''),
-              type: type ? type.replace(/"/g, '') : 'Skincare',
-              brand: brand ? brand.replace(/"/g, '') : 'Unknown',
-              effects: effects ? effects.replace(/"/g, '') : '',
-              skintype: skintype ? skintype.replace(/"/g, '') : '',
-              price: price ? price.replace(/"/g, '') : 'N/A',
-              description: description ? description.replace(/"/g, '') : '',
-              image: `https://via.placeholder.com/150x150/4A90E2/FFFFFF?text=${encodeURIComponent(name.split(' ')[0])}`
-            });
-          }
-        }
-      }
-    }
-    return products;
-  } catch (error) {
-    console.error('Error loading MP products:', error);
-    return [];
-  }
-};
-
-// Skin condition to product mapping
-const skinConditionMapping = {
-  'Acne': {
-    keywords: ['acne', 'pimple', 'blackhead', 'whitehead', 'breakout', 'blemish'],
-    productTypes: ['Face Wash', 'Toner', 'Serum', 'Moisturizer'],
-    effects: ['Acne-Free', 'Pore-Care', 'Oil-Control']
-  },
-  'Eczema': {
-    keywords: ['eczema', 'dermatitis', 'irritation', 'redness', 'dryness'],
-    productTypes: ['Moisturizer', 'Cream', 'Serum'],
-    effects: ['Soothing', 'Moisturizing', 'Hydrating']
-  },
-  'Rosacea': {
-    keywords: ['rosacea', 'redness', 'sensitivity', 'blood vessels'],
-    productTypes: ['Moisturizer', 'Serum', 'Cream'],
-    effects: ['Soothing', 'Anti-Redness', 'Calming']
-  },
-  'Actinic Keratosis': {
-    keywords: ['actinic', 'keratosis', 'sun damage', 'rough patches'],
-    productTypes: ['Sunscreen', 'Moisturizer', 'Serum'],
-    effects: ['UV-Protection', 'Anti-Aging', 'Brightening']
-  },
-  'Basal Cell Carcinoma': {
-    keywords: ['carcinoma', 'skin cancer', 'lesion'],
-    productTypes: ['Sunscreen', 'Protective'],
-    effects: ['UV-Protection', 'Protective']
-  }
-};
-
-// Get products for specific skin condition
-const getProductsForCondition = (condition) => {
-  const allProducts = [...loadSkincareProducts(), ...loadMPProducts()];
-  const mapping = skinConditionMapping[condition] || skinConditionMapping['Acne'];
-  
-  const recommendedProducts = allProducts.filter(product => {
-    // Check product type
-    const typeMatch = mapping.productTypes.some(type => 
-      product.type && product.type.toLowerCase().includes(type.toLowerCase())
-    );
-    
-    // Check effects
-    const effectsMatch = mapping.effects.some(effect => 
-      product.effects && product.effects.toLowerCase().includes(effect.toLowerCase())
-    );
-    
-    // Check keywords in name or description
-    const keywordMatch = mapping.keywords.some(keyword => 
-      (product.name && product.name.toLowerCase().includes(keyword.toLowerCase())) ||
-      (product.description && product.description.toLowerCase().includes(keyword.toLowerCase()))
-    );
-    
-    return typeMatch || effectsMatch || keywordMatch;
-  });
-  
-  // Return top 6 products
-  return recommendedProducts.slice(0, 6);
-};
-
-// Skincare products API endpoint
+// Skincare products API endpoint (now uses Walmart API)
 router.get('/products/:condition', async (req, res) => {
   try {
     const condition = req.params.condition;
-    const products = getProductsForCondition(condition);
-    
+    const products = await fetchWalmartProducts(condition);
     if (products.length === 0) {
-      // Fallback to general skincare products
-      const allProducts = [...loadSkincareProducts(), ...loadMPProducts()];
-      const fallbackProducts = allProducts.slice(0, 6);
-      
       res.json({
         success: true,
-        products: fallbackProducts,
+        products: [],
         condition: condition,
-        message: 'General skincare recommendations'
+        message: 'No Walmart products found for this condition.'
       });
     } else {
       res.json({
         success: true,
         products: products,
         condition: condition,
-        message: `Products recommended for ${condition}`
+        message: `Walmart products recommended for ${condition}`
       });
     }
   } catch (error) {
-    console.error('Error fetching products:', error);
+    console.error('Error fetching Walmart products:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch products'
+      error: 'Failed to fetch Walmart products'
     });
   }
 });
