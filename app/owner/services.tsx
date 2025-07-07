@@ -114,6 +114,7 @@ export default function ServicesPage() {
 
   return (
     <View style={styles.container}>
+      <View style={{ height: 32 }} />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color="#333" />
@@ -123,7 +124,6 @@ export default function ServicesPage() {
           <MaterialIcons name="add" size={28} color="#007AFF" />
         </TouchableOpacity>
       </View>
-      <View style={{ height: 32 }} />
       {loading && <ActivityIndicator size="large" color="#A65E5E" style={{ marginTop: 20 }} />}
       <FlatList
         data={services}
@@ -160,44 +160,44 @@ export default function ServicesPage() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  container: { flex: 1, backgroundColor: '#F7E8E8' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
   backButton: { marginRight: 15 },
-  title: { flex: 1, fontSize: 24, fontWeight: 'bold', color: '#333' },
+  title: { flex: 1, fontSize: 24, fontWeight: 'bold', color: '#A65E5E', textAlign: 'center' },
   addButton: { padding: 4 },
   listContent: { padding: 20 },
   serviceItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 15,
-    marginBottom: 12,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: '#fff',
+    padding: 18,
+    marginBottom: 14,
+    borderRadius: 14,
+    shadowColor: '#A65E5E',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  serviceName: { flex: 1, fontSize: 18, color: '#333' },
+  serviceName: { flex: 1, fontSize: 18, color: '#6B2E2E', fontWeight: '600' },
   actions: { flexDirection: 'row' },
   actionButton: { marginLeft: 15 },
-  emptyText: { textAlign: 'center', color: '#999', marginTop: 50, fontSize: 16 },
+  emptyText: { textAlign: 'center', color: '#A65E5E', marginTop: 50, fontSize: 16, fontWeight: '500' },
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center'
   },
   modalContent: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 24, width: '85%', maxWidth: 400
+    backgroundColor: '#fff', borderRadius: 16, padding: 28, width: '85%', maxWidth: 400
   },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#A65E5E', marginBottom: 16 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#A65E5E', marginBottom: 16, textAlign: 'center' },
   input: {
-    backgroundColor: '#f5f5f5', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#ddd', fontSize: 16
+    backgroundColor: '#F7E8E8', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#EAD8D8', fontSize: 16
   },
   cancelBtn: { padding: 10, marginRight: 10 },
   saveBtn: { backgroundColor: '#A65E5E', padding: 10, borderRadius: 8, minWidth: 80, alignItems: 'center' },

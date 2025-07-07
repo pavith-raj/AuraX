@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, FlatList, TouchableOpacity, Animated, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { fetchSalonAppointments } from '../../api/appointments';
 import { useSalon } from '../../context/SalonContext';
@@ -11,6 +11,19 @@ export default function OwnerNotifications() {
   const { salonId } = useSalon();
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Bottom nav setup
+  const bottomNavItems = [
+    { icon: 'home', label: 'Home', route: '/owner/profile' },
+    { icon: 'notifications', label: 'Notifications', route: '/owner/notifications' },
+    { icon: 'settings', label: 'Settings', route: '/owner/settings' },
+  ];
+  const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+  const bottomNavScaleValues = React.useRef(bottomNavItems.map(() => new Animated.Value(1))).current;
+  const createPressHandlers = (index: number) => ({
+    onPressIn: () => Animated.spring(bottomNavScaleValues[index], { toValue: 0.95, useNativeDriver: true }).start(),
+    onPressOut: () => Animated.spring(bottomNavScaleValues[index], { toValue: 1, friction: 3, tension: 40, useNativeDriver: true }).start(),
+  });
 
   useEffect(() => {
     if (!salonId) return;
@@ -44,11 +57,15 @@ export default function OwnerNotifications() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor="#EAD8D8" barStyle="dark-content" />
+      <View style={{ height: 32 }} />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.title}>Booking Notifications</Text>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Text style={styles.title}>Booking Notifications</Text>
+        </View>
+        <View style={{ width: 39 }} />
       </View>
       {loading ? (
         <ActivityIndicator size="large" color="#A65E5E" style={{ marginTop: 40 }} />
@@ -62,6 +79,24 @@ export default function OwnerNotifications() {
           contentContainerStyle={{ padding: 16 }}
         />
       )}
+      <View style={{ height: 60 }} />
+      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#eee', flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 8 }}>
+        {bottomNavItems.map((item, index: number) => {
+          const { onPressIn, onPressOut } = createPressHandlers(index);
+          return (
+            <AnimatedPressable
+              key={item.label}
+              style={{ alignItems: 'center', flex: 1, transform: [{ scale: bottomNavScaleValues[index] }] }}
+              onPress={() => router.push(item.route)}
+              onPressIn={onPressIn}
+              onPressOut={onPressOut}
+            >
+              <MaterialIcons name={item.icon as keyof typeof MaterialIcons.glyphMap} size={26} color={item.label === 'Notifications' ? '#A65E5E' : '#777'} />
+              <Text style={{ color: item.label === 'Notifications' ? '#A65E5E' : '#777', fontSize: 12 }}>{item.label}</Text>
+            </AnimatedPressable>
+          );
+        })}
+      </View>
     </SafeAreaView>
   );
 }
@@ -72,16 +107,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7E8E8',
   },
   header: {
-    paddingTop: 32,
-    paddingBottom: 16,
-    backgroundColor: '#fff',
+    flexDirection: 'row',
     alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
-    flexDirection: 'row',
   },
   backButton: {
-    marginRight: 10,
+    marginRight: 15,
   },
   title: {
     fontSize: 24,

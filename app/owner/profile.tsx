@@ -22,6 +22,10 @@ type SalonType = {
   salonAddress?: string;
   openingTime?: string;
   closingTime?: string;
+  location?: {
+    lat?: number;
+    lng?: number;
+  };
 };
 
 export default function SalonProfile() {
@@ -184,6 +188,11 @@ export default function SalonProfile() {
             </View>
             <Text style={styles.salonNameLarge}>{salon?.salonName || 'My Salon'}</Text>
             <Text style={styles.salonAddress}>{salon?.salonAddress || '123 Beauty Street, City'}</Text>
+            {salon?.location && salon.location.lat && salon.location.lng && (
+              <Text style={{ color: '#8B5E5E', fontSize: 14, marginTop: 2 }}>
+                Lat: {salon.location.lat}, Lng: {salon.location.lng}
+              </Text>
+            )}
             <Text style={styles.salonHours}>{salon ? `Open: ${salon.openingTime || '9:00 AM'} - ${salon.closingTime || '8:00 PM'}` : 'Open: 9:00 AM - 8:00 PM'}</Text>
           </View>
         </View>
@@ -208,14 +217,6 @@ export default function SalonProfile() {
               <Text style={styles.statLabelModern}>Services</Text>
             </View>
           </ScrollView>
-        </View>
-
-        {/* Recent Activity Section */}
-        <View style={styles.recentActivitySectionModern}>
-          <Text style={styles.recentActivityTitleModern}>Recent Activity</Text>
-          <View style={styles.recentActivityCardModern}>
-            <Text style={styles.recentActivityTextModern}>No recent activity.</Text>
-          </View>
         </View>
 
         {/* Menu Grid */}
@@ -247,19 +248,20 @@ export default function SalonProfile() {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
+      <View style={{ height: 60 }} />
+      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#eee', flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 8 }}>
         {bottomNavItems.map((item, index) => {
           const { onPressIn, onPressOut } = createPressHandlers(index, false);
           return (
             <AnimatedPressable
-              key={index}
-              style={[styles.bottomNavItem, { transform: [{ scale: bottomNavScaleValues[index] }] }]}
+              key={item.label}
+              style={{ alignItems: 'center', flex: 1, transform: [{ scale: bottomNavScaleValues[index] }] }}
               onPress={() => router.push(item.route)}
               onPressIn={onPressIn}
               onPressOut={onPressOut}
             >
-              <MaterialIcons name={item.icon} size={26} color="#A65E5E" />
-              <Text style={styles.bottomNavLabel}>{item.label}</Text>
+              <MaterialIcons name={item.icon} size={26} color={item.label === 'Home' ? '#A65E5E' : '#777'} />
+              <Text style={{ color: item.label === 'Home' ? '#A65E5E' : '#777', fontSize: 12 }}>{item.label}</Text>
             </AnimatedPressable>
           );
         })}
@@ -434,54 +436,6 @@ const styles = StyleSheet.create({
     color: '#6B2E2E',
     textAlign: 'center',
     fontWeight: '700',
-  },
-  recentActivitySectionModern: {
-    marginTop: 24,
-    marginHorizontal: 18,
-  },
-  recentActivityTitleModern: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#6B2E2E',
-    marginBottom: 10,
-  },
-  recentActivityCardModern: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 22,
-    elevation: 2,
-    shadowColor: '#A65E5E',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
-    shadowRadius: 5,
-  },
-  recentActivityTextModern: {
-    color: '#8B5E5E',
-    fontSize: 16,
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#f0dede',
-    elevation: 10,
-    shadowColor: '#A65E5E',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-  },
-  bottomNavItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bottomNavLabel: {
-    fontSize: 13,
-    color: '#8B5E5E',
-    marginTop: 6,
-    fontWeight: '500',
   },
   salonAddress: {
     fontSize: 17,

@@ -11,6 +11,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  FlatList,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -18,6 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { getSalonById, updateSalonProfile } from '../../api/salon';
 import { getToken } from '../../api/storage';
 import { useSalon } from '../../context/SalonContext';
+import PlacesAutocompleteInput from '../../components/PlacesAutocomplete';
 
 export default function EditSalonProfile() {
   const router = useRouter();
@@ -32,6 +34,10 @@ export default function EditSalonProfile() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
+  const [location, setLocation] = useState<{ lat: number | null; lng: number | null }>({ lat: null, lng: null });
+  const [locationSearchQuery, setLocationSearchQuery] = useState('');
+  const [locationPredictions, setLocationPredictions] = useState([]);
+  const locationPlacesInputRef = React.useRef(null);
 
   // Only fetch when salonId is available
   useEffect(() => {
@@ -62,6 +68,7 @@ export default function EditSalonProfile() {
       setEmail(salonData.email || '');
       setOpeningTime(salonData.openingTime || '');
       setClosingTime(salonData.closingTime || '');
+      setLocation(salonData.location || { lat: null, lng: null });
       setLoading(false);
     } catch (err) {
       setError('Failed to fetch salon details.');
@@ -86,6 +93,33 @@ export default function EditSalonProfile() {
     }
   };
 
+  // PlacesAutocomplete handlers
+  const handleLocationPredictionsReady = (predictions: any) => setLocationPredictions(predictions);
+  const handleLocationQueryChange = (query: string) => {
+    setLocationSearchQuery(query);
+    if (location.lat !== null || location.lng !== null) setLocation({ lat: null, lng: null });
+  };
+  const fetchPlaceDetailsForLocation = async (place_id: string) => {
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&key=AIzaSyD9AOX5rjhxoThJDlVYPtkCtLNg7Vivpls&fields=geometry,formatted_address`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.status === 'OK' && json.result) return json.result;
+    return null;
+  };
+  const handleLocationPredictionPress = async (item: any) => {
+    setLocationPredictions([]);
+    const details = await fetchPlaceDetailsForLocation(item.place_id);
+    if (details && details.geometry && details.geometry.location) {
+      setLocation({ lat: details.geometry.location.lat, lng: details.geometry.location.lng });
+      locationPlacesInputRef.current?.setQueryText(details.formatted_address || item.description);
+      setAddress(details.formatted_address || item.description);
+    } else {
+      setLocation({ lat: null, lng: null });
+      locationPlacesInputRef.current?.clear();
+      Alert.alert('Could not get location coordinates. Please try searching again.');
+    }
+  };
+
   const handleSave = async () => {
     if (!salonId) {
       Alert.alert('Error', 'Salon ID not found. Please log in again.');
@@ -105,6 +139,7 @@ export default function EditSalonProfile() {
         phone,
         openingTime,
         closingTime,
+        location,
       };
       await updateSalonProfile(salonId, updateData);
       Alert.alert('Success', 'Profile updated successfully');
@@ -139,6 +174,7 @@ export default function EditSalonProfile() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <View style={{ height: 32 }} />
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -195,7 +231,7 @@ export default function EditSalonProfile() {
             />
           </View>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Address</Text>
+            <Text style={styles.label}>Salon Address (manual)</Text>
             <TextInput
               style={styles.input}
               value={address}
@@ -203,6 +239,30 @@ export default function EditSalonProfile() {
               placeholder="Enter salon address"
               multiline
             />
+          </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Search & Pin Location</Text>
+            <PlacesAutocompleteInput
+              ref={locationPlacesInputRef}
+              onQueryChange={handleLocationQueryChange}
+              onPredictionsReady={handleLocationPredictionsReady}
+              initialQuery={address}
+            />
+            {locationPredictions.length > 0 && (
+              <FlatList
+                data={locationPredictions}
+                keyExtractor={item => item.place_id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity onPress={() => handleLocationPredictionPress(item)} style={{ padding: 12, borderBottomWidth: 1, borderColor: '#eee', backgroundColor: '#fff' }}>
+                    <Text>{item.description}</Text>
+                  </TouchableOpacity>
+                )}
+                style={{ maxHeight: 180, backgroundColor: '#fff', borderRadius: 8, marginTop: 4, elevation: 2 }}
+              />
+            )}
+            {location.lat && location.lng && (
+              <Text style={{ color: '#6B2E2E', marginTop: 8, fontSize: 13 }}>Lat: {location.lat}, Lng: {location.lng}</Text>
+            )}
           </View>
           <View style={styles.timeContainer}>
             <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
