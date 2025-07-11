@@ -26,6 +26,7 @@ type SalonType = {
     lat?: number;
     lng?: number;
   };
+  locationAddress?: string;
 };
 
 export default function SalonProfile() {
@@ -187,11 +188,13 @@ export default function SalonProfile() {
               </TouchableOpacity>
             </View>
             <Text style={styles.salonNameLarge}>{salon?.salonName || 'My Salon'}</Text>
+            <Text style={styles.salonAddressLabel}>Salon Address:</Text>
             <Text style={styles.salonAddress}>{salon?.salonAddress || '123 Beauty Street, City'}</Text>
-            {salon?.location && salon.location.lat && salon.location.lng && (
-              <Text style={{ color: '#8B5E5E', fontSize: 14, marginTop: 2 }}>
-                Lat: {salon.location.lat}, Lng: {salon.location.lng}
-              </Text>
+            {salon?.locationAddress && (
+              <>
+                <Text style={styles.salonAddressLabel}>Location:</Text>
+                <Text style={styles.salonAddress}>{salon.locationAddress}</Text>
+              </>
             )}
             <Text style={styles.salonHours}>{salon ? `Open: ${salon.openingTime || '9:00 AM'} - ${salon.closingTime || '8:00 PM'}` : 'Open: 9:00 AM - 8:00 PM'}</Text>
           </View>
@@ -446,6 +449,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#A67A7A',
     marginTop: 3,
+  },
+  salonAddressLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8B5E5E',
+    marginTop: 8,
+  },
+  salonCoords: {
+    color: '#8B5E5E',
+    fontSize: 14,
+    marginTop: 2,
+  },
+  salonCoordsWarning: {
+    color: 'orange',
+    fontSize: 13,
+    marginTop: 2,
   },
 });
 

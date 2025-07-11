@@ -19,6 +19,7 @@ const salonSchema = new mongoose.Schema({
   // Salon details
   salonName: { type: String, required: true },
   salonAddress: { type: String, required: true },
+  locationAddress: { type: String, default: '' }, // Formatted address from Google Places
   location: {
     lat: { type: Number },
     lng: { type: Number }

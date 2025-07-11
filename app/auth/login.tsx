@@ -16,11 +16,42 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false); // To handle loading state
   const [errorMessage, setErrorMessage] = useState(''); // To handle error message
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  // Email validation regex
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // Password validation regex: at least one capital, one number, one special character
+  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/;
+
+  // Real-time validation handlers
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (!emailRegex.test(value)) {
+      setEmailError('Please enter a valid email address.');
+    } else {
+      setEmailError('');
+    }
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    if (!passwordRegex.test(value)) {
+      setPasswordError('Password must contain at least one capital letter, one number, and one special character.');
+    } else {
+      setPasswordError('');
+    }
+  };
 
   // Handle login logic
   const handleLogin = async () => {
     setLoading(true);
     setErrorMessage(''); // Reset error message on new attempt
+
+    if (emailError || passwordError) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await loginUser({ email, password });
@@ -92,9 +123,10 @@ export default function LoginScreen() {
         style={styles.input}
         placeholder="Email"
         value={email}
-        onChangeText={setEmail}
+        onChangeText={handleEmailChange}
         keyboardType="email-address"
       />
+      {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
 
       {/* Password Input */}
 <View style={{ position: 'relative' }}>
@@ -102,7 +134,7 @@ export default function LoginScreen() {
     style={styles.input}
     placeholder="Password"
     value={password}
-    onChangeText={setPassword}
+    onChangeText={handlePasswordChange}
     secureTextEntry={!showPassword}
   />
   <TouchableOpacity
@@ -116,6 +148,7 @@ export default function LoginScreen() {
     />
   </TouchableOpacity>
 </View>
+{passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
 
       {/* Show error message */}
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}

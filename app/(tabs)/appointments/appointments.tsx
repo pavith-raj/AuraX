@@ -169,6 +169,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
-});
+});export default AppointmentsPage;
 
-export default AppointmentsPage;

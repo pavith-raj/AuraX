@@ -35,6 +35,12 @@ const ProfilePage = () => {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigation.navigate('auth/login' as never);
+    }
+  }, [authLoading, user, navigation]);
+
   const handleEditToggle = () => setEditing(!editing);
 
   const handleSaveChanges = async () => {
@@ -280,5 +286,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
-
 export default ProfilePage;
+

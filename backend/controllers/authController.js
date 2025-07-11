@@ -36,7 +36,7 @@ exports.registerSalonOwner = async (req, res) => {
   try {
     const {
       name, email, password, phone,
-      salonName, salonAddress, location, services
+      salonName, salonAddress, location, locationAddress, services
     } = req.body;
 
     // Check if email already exists in salons
@@ -50,6 +50,7 @@ exports.registerSalonOwner = async (req, res) => {
       phone,
       salonName,
       salonAddress,
+      locationAddress,
       location,
       services,
       // rating, role, isApproved use defaults
@@ -74,7 +75,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
         { id: user._id, role: user.role },
         process.env.JWT_SECRET,
-        { expiresIn: '7d' }
+        { expiresIn: '30d' }
       );
       return res.status(200).json({
         message: 'Login successful',
@@ -94,7 +95,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
         { id: salon._id, role: salon.role },
         process.env.JWT_SECRET,
-        { expiresIn: '7d' }
+        { expiresIn: '30d' }
       );
       return res.status(200).json({
         message: 'Login successful',

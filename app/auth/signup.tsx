@@ -31,6 +31,7 @@ export default function SignupScreen() {
   
   // State for the text input that uses PlacesAutocomplete for location
   const [locationSearchQuery, setLocationSearchQuery] = useState(''); 
+  const [locationAddress, setLocationAddress] = useState('');
 
   // UI states
   const [loading, setLoading] = useState(false);
@@ -39,6 +40,33 @@ export default function SignupScreen() {
   // Autocomplete specific states and ref for the LOCATION search input
   const [locationPredictions, setLocationPredictions] = useState([]); // Predictions for location search
   const locationPlacesInputRef = useRef(null); // Ref to control the PlacesAutocompleteInput component for location
+
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  // Email validation regex
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // Password validation regex: at least one capital, one number, one special character
+  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/;
+
+  // Real-time validation handlers
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (!emailRegex.test(value)) {
+      setEmailError('Please enter a valid email address.');
+    } else {
+      setEmailError('');
+    }
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    if (!passwordRegex.test(value)) {
+      setPasswordError('Password must contain at least one capital letter, one number, and one special character.');
+    } else {
+      setPasswordError('');
+    }
+  };
 
   // Function to fetch full place details from Google Places Details API (for location)
   const fetchPlaceDetailsForLocation = async (place_id: string) => {
@@ -85,9 +113,9 @@ export default function SignupScreen() {
         lat: details.geometry.location.lat,
         lng: details.geometry.location.lng,
       });
-
       // Update the text in the PlacesAutocompleteInput to the selected formatted address (for display purposes)
       locationPlacesInputRef.current?.setQueryText(details.formatted_address || item.description);
+      setLocationAddress(details.formatted_address || item.description);
       setErrorMessage(''); // Clear previous error messages
 
       console.log('Selected Location Coordinates:', details.geometry.location);
@@ -97,12 +125,17 @@ export default function SignupScreen() {
       console.warn('Selected place details missing geometry or location for location:', item, details);
       setLocation({ lat: null, lng: null });
       locationPlacesInputRef.current?.clear(); // Clear the input field if details couldn't be fetched
+      setLocationAddress('');
       setErrorMessage('Could not get location coordinates. Please try searching again.');
     }
   };
 
   // Handle signup logic
   const handleSignup = async () => {
+    if (emailError || passwordError) {
+      setErrorMessage('');
+      return;
+    }
     if (password !== confirmPassword) {
       setErrorMessage('Passwords do not match');
       return;
@@ -147,6 +180,7 @@ export default function SignupScreen() {
             phone,
             salonName,
             salonAddress,       // Manually entered full precise address (string)
+            locationAddress,    // Google Places formatted address
             location,           // {lat, lng} object from Places API
             services: []        // Assuming this is still part of your schema
           }
@@ -192,10 +226,11 @@ export default function SignupScreen() {
               style={styles.input}
               placeholder="Email"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={handleEmailChange}
               keyboardType="email-address"
               autoCapitalize="none"
             />
+            {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
 
             {/* Password Input with Visibility Toggle */}
             <View style={{ position: 'relative' }}>
@@ -203,7 +238,7 @@ export default function SignupScreen() {
                 style={styles.input}
                 placeholder="Password"
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={handlePasswordChange}
                 secureTextEntry={!showPassword}
               />
               <TouchableOpacity
@@ -217,6 +252,7 @@ export default function SignupScreen() {
                 />
               </TouchableOpacity>
             </View>
+            {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
 
             {/* Confirm Password Input */}
             <TextInput
@@ -255,6 +291,14 @@ export default function SignupScreen() {
                   textAlignVertical="top" // Align text to top for multiline
                 />
 
+                {/* Display selected location address for user confirmation */}
+                {locationAddress ? (
+                  <Text style={styles.selectedDetailText}>
+                    <Text style={{ fontWeight: 'bold' }}>Selected Location (Google Places): </Text>
+                    {locationAddress}
+                  </Text>
+                ) : null}
+
                 {/* Places Autocomplete Input for Location Coordinates */}
                 <Text style={styles.sectionHeading}>Pinpoint Location (Coordinates)</Text>
                 <View style={styles.autocompleteWrapper}>
@@ -262,7 +306,7 @@ export default function SignupScreen() {
                     ref={locationPlacesInputRef} // Using the ref for location
                     onPredictionsReady={handleLocationPredictionsReady}
                     onQueryChange={handleLocationQueryChange}
-                    initialQuery={locationSearchQuery} // Bind to its own state
+                    initialQuery={locationAddress} // Bind to its own state
                   />
                   {/* Autocomplete Predictions FlatList for Location - positioned absolutely */}
                   {locationPredictions.length > 0 && (

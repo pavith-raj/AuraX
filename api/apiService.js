@@ -25,3 +25,19 @@ export const deleteService = async (salonId, serviceId) => {
   const res = await api.delete(`/salons/${salonId}/services/${serviceId}`);
   return res.data; // Often delete returns a confirmation message or the deleted object ID
 };
+
+// Walk-in Queue API
+export const getQueue = async (salonId) => {
+  const res = await api.get(`/queue/${salonId}`);
+  return res.data.queue;
+};
+
+export const joinQueue = async (salonId) => {
+  const res = await api.post(`/queue/${salonId}/join`);
+  return res.data.entry;
+};
+
+export const leaveQueue = async (salonId) => {
+  const res = await api.post(`/queue/${salonId}/leave`);
+  return res.data;
+};

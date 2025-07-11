@@ -35,6 +35,7 @@ export default function EditSalonProfile() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [location, setLocation] = useState<{ lat: number | null; lng: number | null }>({ lat: null, lng: null });
+  const [locationAddress, setLocationAddress] = useState('');
   const [locationSearchQuery, setLocationSearchQuery] = useState('');
   const [locationPredictions, setLocationPredictions] = useState([]);
   const locationPlacesInputRef = React.useRef(null);
@@ -64,6 +65,7 @@ export default function EditSalonProfile() {
       const salonData = await getSalonById(salonId);
       setSalonName(salonData.salonName || '');
       setAddress(salonData.salonAddress || '');
+      setLocationAddress(salonData.locationAddress || '');
       setPhone(salonData.phone || '');
       setEmail(salonData.email || '');
       setOpeningTime(salonData.openingTime || '');
@@ -112,7 +114,7 @@ export default function EditSalonProfile() {
     if (details && details.geometry && details.geometry.location) {
       setLocation({ lat: details.geometry.location.lat, lng: details.geometry.location.lng });
       locationPlacesInputRef.current?.setQueryText(details.formatted_address || item.description);
-      setAddress(details.formatted_address || item.description);
+      setLocationAddress(details.formatted_address || item.description);
     } else {
       setLocation({ lat: null, lng: null });
       locationPlacesInputRef.current?.clear();
@@ -136,6 +138,7 @@ export default function EditSalonProfile() {
       const updateData = {
         salonName,
         salonAddress: address,
+        locationAddress,
         phone,
         openingTime,
         closingTime,
@@ -241,12 +244,19 @@ export default function EditSalonProfile() {
             />
           </View>
           <View style={styles.inputGroup}>
+            <Text style={styles.label}>Location (Google Places)</Text>
+            <TextInput
+              style={styles.input}
+              value={locationAddress}
+              editable={false}
+              placeholder="Select a location from below"
+            />
             <Text style={styles.label}>Search & Pin Location</Text>
             <PlacesAutocompleteInput
               ref={locationPlacesInputRef}
               onQueryChange={handleLocationQueryChange}
               onPredictionsReady={handleLocationPredictionsReady}
-              initialQuery={address}
+              initialQuery={locationAddress}
             />
             {locationPredictions.length > 0 && (
               <FlatList

@@ -3,11 +3,23 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getSalonById } from '../../../api/salon'; 
 
+interface Salon {
+  _id: string;
+  salonName: string;
+  name: string;
+  rating: number;
+  phone: string;
+  salonAddress: string;
+  services: { name?: string }[];
+  walkInEnabled?: boolean;
+  [key: string]: any;
+}
+
 export default function SalonDetails() {
   const router = useRouter();
   const { id } = useLocalSearchParams(); // This will capture salon ID when navigating
 
-  const [salon, setSalon] = useState(null);
+  const [salon, setSalon] = useState<Salon | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -69,6 +81,14 @@ export default function SalonDetails() {
                 <Text style={styles.sectionText}>No services listed.</Text>
               )}
             </View>
+            {salon?.walkInEnabled && (
+              <TouchableOpacity
+                style={{ backgroundColor: '#A65E5E', padding: 16, borderRadius: 8, marginTop: 20 }}
+                onPress={() => router.push({ pathname: '/(tabs)/queue/queue', params: { salonId: salon._id, salonName: salon.salonName } })}
+              >
+                <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Join Walk-in Queue</Text>
+              </TouchableOpacity>
+            )}
           </>
         ) : (
           <Text style={styles.errorText}>Salon not found.</Text>
