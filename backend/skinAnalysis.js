@@ -295,11 +295,23 @@ router.post('/analyze', upload.single('image'), async (req, res) => {
         // Label correction for known typos
         const labelCorrectionMap = { 'Eczemaa': 'Eczema' };
         const correctedPrediction = labelCorrectionMap[analysisResult.prediction] || analysisResult.prediction;
-        let realProducts = await fetchWalmartProducts(correctedPrediction);
-        if (!realProducts || realProducts.length === 0) {
-          realProducts = await fetchWalmartProducts('skincare');
+        let realProducts = [];
+        try {
+          const productsRes = await axios.get(`http://localhost:5000/api/products/${encodeURIComponent(correctedPrediction)}`);
+          realProducts = productsRes.data.products || [];
+        } catch (err) {
+          console.error('Error fetching product recommendations:', err.message);
+          realProducts = [];
         }
-        
+        if (!realProducts || realProducts.length === 0) {
+          try {
+            const productsRes = await axios.get(`http://localhost:5000/api/products/skincare`);
+            realProducts = productsRes.data.products || [];
+          } catch (err) {
+            console.error('Error fetching fallback product recommendations:', err.message);
+            realProducts = [];
+          }
+        }
         // Enhanced skin problem detection
         const detectedProblems = [];
         if (correctedPrediction) {
@@ -497,7 +509,7 @@ const fetchWalmartProducts = async (condition) => {
 router.get('/products/:condition', async (req, res) => {
   try {
     const condition = req.params.condition;
-    const products = await fetchWalmartProducts(condition);
+    const products = await fetchProducts(condition);
     if (products.length === 0) {
       res.json({
         success: true,
@@ -519,6 +531,32 @@ router.get('/products/:condition', async (req, res) => {
       success: false,
       error: 'Failed to fetch Walmart products'
     });
+  }
+});
+
+// Feedback storage endpoint
+const feedbackPath = path.join(__dirname, 'feedback.json');
+
+router.post('/feedback', async (req, res) => {
+  try {
+    const { prediction, image, notes, correctLabel } = req.body;
+    const feedbackEntry = {
+      timestamp: new Date().toISOString(),
+      prediction,
+      image,
+      notes,
+      correctLabel,
+    };
+    let feedbackData = [];
+    if (fs.existsSync(feedbackPath)) {
+      feedbackData = JSON.parse(fs.readFileSync(feedbackPath, 'utf8'));
+    }
+    feedbackData.push(feedbackEntry);
+    fs.writeFileSync(feedbackPath, JSON.stringify(feedbackData, null, 2));
+    res.json({ success: true, message: 'Feedback stored' });
+  } catch (error) {
+    console.error('Error storing feedback:', error);
+    res.status(500).json({ success: false, message: 'Failed to store feedback' });
   }
 });
 

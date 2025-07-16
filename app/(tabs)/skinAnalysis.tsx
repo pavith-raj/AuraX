@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { analyzeSkinImage, getManualRecommendations, getRefinedRecommendations, analyzeAcneSeverity } from '../../api/skinAnalysis';
+import axiosInstance from '../../api/axiosInstance';
 
 interface Product {
   name: string;
@@ -57,6 +58,8 @@ export default function SkinAnalysis() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [manualCondition, setManualCondition] = useState('');
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
+  const [selectedCorrectLabel, setSelectedCorrectLabel] = useState('');
 
   const conditions = ['acne', 'bags', 'redness', 'tan', 'dryness'];
 
@@ -296,6 +299,12 @@ export default function SkinAnalysis() {
               ))}
             </View>
           )}
+          <TouchableOpacity
+            style={{ marginTop: 12, alignSelf: 'center', backgroundColor: '#A65E5E', padding: 10, borderRadius: 8 }}
+            onPress={() => setFeedbackModalVisible(true)}
+          >
+            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Report Incorrect Prediction</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -306,37 +315,46 @@ export default function SkinAnalysis() {
           {Object.entries(analysisResult.recommendations).map(([category, products]) => (
             <View key={category} style={styles.recommendationSection}>
               <Text style={styles.categoryTitle}>{category} Products:</Text>
-              {products.map((product, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.productCard}
-                  onPress={() => product.url ? openProductUrl(product.url) : null}
-                >
-                  {product.image && (
-                    <Image source={{ uri: product.image }} style={styles.productImage} />
-                  )}
-                  <View style={styles.productInfo}>
-                    <Text style={styles.productName}>{product.name}</Text>
-                    {product.brand && (
-                      <Text style={styles.productBrand}>{product.brand}</Text>
+              {products.length === 0 ? (
+                <Text style={{ color: '#A65E5E', fontStyle: 'italic', marginTop: 8 }}>
+                  No products available for {category}
+                </Text>
+              ) : (
+                products.map((product, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.productCard}
+                    onPress={() => product.url ? openProductUrl(product.url) : null}
+                  >
+                    {product.image && (
+                      <Image source={{ uri: product.image }} style={styles.productImage} />
                     )}
-                    <Text style={styles.productType}>{product.type}</Text>
-                    {product.description && (
-                      <Text style={styles.productDescription} numberOfLines={2}>
-                        {product.description}
-                      </Text>
-                    )}
-                    <Text style={styles.productPrice}>{product.price}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                    <View style={styles.productInfo}>
+                      <Text style={styles.productName}>{product.name}</Text>
+                      {product.brand && (
+                        <Text style={styles.productBrand}>{product.brand}</Text>
+                      )}
+                      <Text style={styles.productType}>{product.type}</Text>
+                      {product.description && (
+                        <Text style={styles.productDescription} numberOfLines={2}>
+                          {product.description}
+                        </Text>
+                      )}
+                      <Text style={styles.productPrice}>{product.price}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
           ))}
         </View>
       )}
 
-      {/* Manual Condition Selection */}
-      <View style={styles.card}>
+      {/* Disclaimer and Manual Condition Selection */}
+      <View style={[styles.card, { borderColor: '#A65E5E', borderWidth: 1, backgroundColor: '#FFF7F7' }]}> 
+        <Text style={{ color: '#A65E5E', fontStyle: 'italic', marginBottom: 8, textAlign: 'center' }}>
+          AI predictions are for informational purposes only. If you believe the result is incorrect, please select your condition manually below.
+        </Text>
         <Text style={styles.sectionTitle}>Or Select a Condition</Text>
         <View style={styles.conditionButtons}>
           {conditions.map((condition) => (
@@ -350,6 +368,56 @@ export default function SkinAnalysis() {
           ))}
         </View>
       </View>
+      {/* Feedback Modal */}
+      {feedbackModalVisible && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 24, width: '80%' }}>
+            <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>Help us improve!</Text>
+            <Text style={{ marginBottom: 8 }}>What is the correct skin issue?</Text>
+            {conditions.map((condition) => (
+              <TouchableOpacity
+                key={condition}
+                style={{ padding: 10, backgroundColor: selectedCorrectLabel === condition ? '#A65E5E' : '#f0f0f0', borderRadius: 8, marginBottom: 6 }}
+                onPress={() => setSelectedCorrectLabel(condition)}
+              >
+                <Text style={{ color: selectedCorrectLabel === condition ? '#fff' : '#333', textAlign: 'center' }}>{condition}</Text>
+              </TouchableOpacity>
+            ))}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
+              <TouchableOpacity onPress={() => setFeedbackModalVisible(false)} style={{ padding: 10 }}>
+                <Text style={{ color: '#A65E5E', fontWeight: 'bold' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  if (!selectedCorrectLabel) {
+                    Alert.alert('Please select the correct issue.');
+                    return;
+                  }
+                  if (!analysisResult) {
+                    Alert.alert('Error', 'No analysis result available.');
+                    return;
+                  }
+                  try {
+                    await axiosInstance.post('/skin/feedback', {
+                      prediction: analysisResult.prediction,
+                      image: selectedImage,
+                      correctLabel: selectedCorrectLabel,
+                    });
+                    setFeedbackModalVisible(false);
+                    setSelectedCorrectLabel('');
+                    Alert.alert('Feedback Received', 'Thank you for your feedback!');
+                  } catch (err) {
+                    Alert.alert('Error', 'Failed to send feedback.');
+                  }
+                }}
+                style={{ padding: 10 }}
+              >
+                <Text style={{ color: '#A65E5E', fontWeight: 'bold' }}>Submit</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 }

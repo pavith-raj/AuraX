@@ -46,7 +46,7 @@ export const analyzeAcneSeverity = async (imageUri) => {
 
 export const getManualRecommendations = async (condition) => {
   try {
-    const response = await axiosInstance.get(`/skin/products/${condition}`);
+    const response = await axiosInstance.get(`/products/${condition}`);
     return response.data;
   } catch (error) {
     console.error('Manual recommendations error:', error);
@@ -56,7 +56,7 @@ export const getManualRecommendations = async (condition) => {
 
 export const getRefinedRecommendations = async (refinedCondition) => {
   try {
-    const response = await axiosInstance.get(`/skin/products/${refinedCondition}`);
+    const response = await axiosInstance.get(`/products/${refinedCondition}`);
     return response.data;
   } catch (error) {
     console.error('Refined recommendations error:', error);
@@ -66,7 +66,7 @@ export const getRefinedRecommendations = async (refinedCondition) => {
 
 export const fetchProductsForCondition = async (condition) => {
   try {
-    const response = await axiosInstance.get(`/skin/products/${condition}`);
+    const response = await axiosInstance.get(`/products/${condition}`);
     return response.data;
   } catch (error) {
     console.error('Fetch products error:', error);
@@ -76,7 +76,7 @@ export const fetchProductsForCondition = async (condition) => {
 
 export const getProductRecommendations = async (condition) => {
   try {
-    const response = await axiosInstance.get(`/skin/recommendations/${condition}`);
+    const response = await axiosInstance.get(`/products/${condition}`);
     return response.data;
   } catch (error) {
     console.error('Get product recommendations error:', error);
