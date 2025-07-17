@@ -4,12 +4,18 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import BottomNavBar from '../../../components/BottomNav'; 
 import { getSalons } from '../../../api/salon';
 
+interface Salon {
+  _id: string;
+  name: string;
+  salonName?: string;
+  rating: number;
+  salonAddress: string;
+}
+
 export default function SalonList() {
   const router = useRouter();
-  
-  const { fromBooking } = useLocalSearchParams();
-
-  const [salons, setSalons] = useState([]);
+  const { fromBooking, fromQueue } = useLocalSearchParams();
+  const [salons, setSalons] = useState<Salon[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const[selectedRating,setSelectedRating] = useState<number | null>(null);
@@ -24,8 +30,8 @@ export default function SalonList() {
   }, []);
 
 
-  const filteredSalons = salons.filter((salon) =>{
-    const matchesSearch = salon.name.toLowerCase().includes(searchText.toLowerCase());
+  const filteredSalons = salons.filter((salon: Salon) =>{
+    const matchesSearch = (salon.name || salon.salonName || '').toLowerCase().includes(searchText.toLowerCase());
     const matchesRating = selectedRating ? salon.rating >= selectedRating : true;
     return matchesSearch && matchesRating;
   });
@@ -83,7 +89,7 @@ export default function SalonList() {
     {/* Salon List */}
     <ScrollView style={styles.container}>
 
-      {filteredSalons.map((salon) => (
+      {filteredSalons.map((salon: Salon) => (
   <View key={salon._id} style={styles.card}>
     {/* <Image source={salon.image} style={styles.image} /> */}
     <TouchableOpacity
@@ -100,13 +106,22 @@ export default function SalonList() {
               salonRating: String(salon.rating),
             },
           });
+        } else if (fromQueue) {
+          // Go to queue screen with salon info
+          router.push({
+            pathname: '/(tabs)/queue/queue',
+            params: {
+              salonId: salon._id,
+              salonName: salon.name,
+            },
+          });
         } else {
           // Normal details navigation
           router.push(`/user/salons/details?id=${salon._id}`);
         }
       }}
     >
-      <Text style={styles.salonName}>{salon.salonName}</Text>
+      <Text style={styles.salonName}>{salon.salonName || salon.name}</Text>
       <View style={styles.rowAlign}>
       <Text style={styles.rating}>⭐ {salon.rating}</Text>
       <Text style={styles.salonAddress}>📍{salon.salonAddress}</Text>
@@ -198,7 +213,7 @@ const styles = StyleSheet.create({
   details: {
     padding: 12,
   },
-salonName: {
+  salonName: {
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -225,5 +240,11 @@ salonName: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 15,
+  },
+  salonAddress: {
+    fontSize: 13,
+    color: '#888',
+    marginLeft: 8,
+    marginTop: 2,
   },
 });

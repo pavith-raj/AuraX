@@ -38,6 +38,7 @@ interface AnalysisResult {
   acne_confidence?: { [key: string]: number };
   detected_problems?: string[];
   skin_type?: string;
+  top_features?: { name: string; importance: number }[];
 }
 
 const subCategories = {
@@ -51,6 +52,39 @@ const subCategories = {
 function isValidPrediction(prediction: string): prediction is keyof typeof subCategories {
   return prediction in subCategories;
 }
+
+const conditionDescriptions: { [key: string]: { name: string; description: string; symptoms: string[] } } = {
+  acne: {
+    name: 'Acne',
+    description: 'Acne is a skin condition that occurs when hair follicles become clogged with oil and dead skin cells, causing pimples, blackheads, or whiteheads. It is common among teenagers but can affect people of all ages.',
+    symptoms: ['Pimples', 'Blackheads', 'Whiteheads', 'Oiliness', 'Scarring'],
+  },
+  bags: {
+    name: 'Under-eye Bags',
+    description: 'Under-eye bags are mild swelling or puffiness under the eyes, often caused by aging, fatigue, or fluid retention.',
+    symptoms: ['Dark Circles', 'Puffiness', 'Swelling', 'Loose Skin'],
+  },
+  redness: {
+    name: 'Redness',
+    description: 'Redness is a common skin symptom that can be caused by irritation, inflammation, rosacea, or other skin conditions.',
+    symptoms: ['Irritation', 'Sensitivity', 'Rosacea', 'Flushing'],
+  },
+  eczema: {
+    name: 'Eczema',
+    description: 'Eczema is a condition that makes your skin red, inflamed, and itchy. It is common in children but can occur at any age.',
+    symptoms: ['Dryness', 'Itching', 'Redness', 'Flaking', 'Irritation'],
+  },
+  tan: {
+    name: 'Tan',
+    description: 'Skin tanning is the darkening of the skin due to exposure to ultraviolet (UV) radiation from the sun or artificial sources.',
+    symptoms: ['Sun Damage', 'Hyperpigmentation', 'Uneven Skin Tone'],
+  },
+  dryness: {
+    name: 'Dryness',
+    description: 'Dry skin occurs when your skin loses too much water or oil, leading to flakiness, rough texture, and sometimes itching.',
+    symptoms: ['Flaky Skin', 'Dehydration', 'Rough Texture'],
+  },
+};
 
 export default function SkinAnalysis() {
   const router = useRouter();
@@ -274,37 +308,37 @@ export default function SkinAnalysis() {
 
       {/* Analysis Results */}
       {analysisResult && (
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Detected Skin Problems</Text>
-          
-          {/* Main Detection */}
-          {analysisResult.prediction && (
-            <View style={styles.resultItem}>
-              <Text style={styles.problemTitle}>Primary Issue: {analysisResult.prediction}</Text>
-
-              {analysisResult.skin_type && (
-                <Text style={styles.skinTypeText}>Skin Type: {analysisResult.skin_type}</Text>
-              )}
-            </View>
-          )}
-          
-          
-          
-          {/* Specific Problems */}
-          {getDetectedProblems().length > 0 && (
-            <View style={styles.resultItem}>
-              <Text style={styles.problemTitle}>Detected Issues:</Text>
-              {getDetectedProblems().map((problem, index) => (
-                <Text key={index} style={styles.problemText}>• {problem}</Text>
+        <View style={{ marginTop: 16 }}>
+          {/* Detected Result */}
+          <Text style={[styles.sectionTitle, { color: '#A65E5E', marginBottom: 4 }]}> 
+            Detected as: {conditionDescriptions[analysisResult.prediction?.toLowerCase()]?.name || analysisResult.prediction}
+          </Text>
+          {/* What is this condition? */}
+          <Text style={styles.sectionTitle}>
+            What is {conditionDescriptions[analysisResult.prediction?.toLowerCase()]?.name}?
+          </Text>
+          <Text style={styles.sectionDescription}>
+            {conditionDescriptions[analysisResult.prediction?.toLowerCase()]?.description}
+          </Text>
+          {/* Why did we detect this? */}
+          <Text style={styles.sectionTitle}>Why did we detect this?</Text>
+          <Text style={styles.sectionDescription}>
+            The AI detected features such as: {conditionDescriptions[analysisResult.prediction?.toLowerCase()]?.symptoms.join(', ')}.
+            {analysisResult.confidence_scores && analysisResult.prediction && (
+              `\nConfidence: ${Math.round(analysisResult.confidence_scores[analysisResult.prediction] * 100)}%`
+            )}
+          </Text>
+          {/* Show top features from the model */}
+          {analysisResult.top_features && (
+            <View style={{ marginTop: 8 }}>
+              <Text style={styles.sectionTitle}>Most Important Features for This Prediction:</Text>
+              {analysisResult.top_features.map((feat: any, idx: number) => (
+                <Text key={idx} style={styles.sectionDescription}>
+                  {feat.name} ({(feat.importance * 100).toFixed(2)}%)
+                </Text>
               ))}
             </View>
           )}
-          <TouchableOpacity
-            style={{ marginTop: 12, alignSelf: 'center', backgroundColor: '#A65E5E', padding: 10, borderRadius: 8 }}
-            onPress={() => setFeedbackModalVisible(true)}
-          >
-            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Report Incorrect Prediction</Text>
-          </TouchableOpacity>
         </View>
       )}
 
@@ -612,5 +646,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 5,
+  },
+  sectionDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 15,
+    textAlign: 'center',
   },
 }); 

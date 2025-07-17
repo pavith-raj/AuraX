@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TextInput } from 'react-native';
 import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Modal, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -21,6 +21,21 @@ export default function HomePage() {
   const [locationQuery, setLocationQuery] = useState('');
   const [locationPredictions, setLocationPredictions] = useState<Prediction[]>([]);
   const [selectedLocation, setSelectedLocation] = useState('');
+
+  // Mock: User's current queue status (replace with real fetch/context)
+  const [myQueue, setMyQueue] = useState<null | {
+    salonId: string;
+    salonName: string;
+    position: number;
+    wait: number;
+  }>(null);
+
+  // Example: Simulate fetching queue status on mount (replace with real logic)
+  useEffect(() => {
+    // TODO: Replace with real API call or context
+    // setMyQueue({ salonId: '123', salonName: 'Glamour Hub', position: 3, wait: 20 });
+    setMyQueue(null); // Not in queue by default
+  }, []);
 
   // Fetch predictions from Google Places API
   const fetchPredictions = async (input: string) => {
@@ -198,9 +213,22 @@ export default function HomePage() {
 
       {/* Queue & Walk-In Management */}
       <View style={styles.queueSection}>
-        <TouchableOpacity style={styles.queueButton} onPress={() => router.push('/queue')}>
+        <TouchableOpacity
+          style={styles.queueButton}
+          onPress={() => router.push('/user/salons/salonslist?fromQueue=1')}
+        >
           <Text style={styles.queueText}>Join Walk-In Queue</Text>
         </TouchableOpacity>
+        {myQueue && (
+          <TouchableOpacity
+            style={styles.myQueueButton}
+            onPress={() => router.push(`/queue?salonId=${myQueue.salonId}&salonName=${encodeURIComponent(myQueue.salonName)}`)}
+          >
+            <Text style={styles.myQueueText}>
+              My Queue: #{myQueue.position} • {myQueue.wait} min
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Featured Salons */}
@@ -437,6 +465,26 @@ const styles = StyleSheet.create({
   queueText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  myQueueButton: {
+    backgroundColor: '#fff',
+    borderColor: '#A65E5E',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    shadowColor: '#A65E5E',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  myQueueText: {
+    color: '#A65E5E',
+    fontWeight: 'bold',
+    fontSize: 13,
   },
   featuredSalons: {
     padding: 16,
