@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView, Alert, RefreshControl } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getQueue, joinQueue, leaveQueue } from '../../../api/apiService';
 import { AuthContext } from '../../../context/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface QueueEntry {
-  userId: string;
+  _id: string;
+  userId: string | null;
   name?: string;
   joinedAt: string;
 }
@@ -19,30 +21,50 @@ export default function Queue() {
   const [inQueue, setInQueue] = useState(false);
   const [myPosition, setMyPosition] = useState<number | null>(null);
   const [expectedWait, setExpectedWait] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const userId = user?._id;
 
   const fetchQueue = async () => {
-    if (!salonId) return;
+    if (!salonId || !userId) return;
     setLoading(true);
     try {
       const q = await getQueue(salonId);
+      console.log('Fetched queue:', q);
       setQueue(q);
-      const myIdx = q.findIndex((qe: QueueEntry) => qe.userId === userId);
-      setInQueue(myIdx !== -1);
-      setMyPosition(myIdx !== -1 ? myIdx + 1 : null);
-      setExpectedWait(myIdx !== -1 ? myIdx * 10 : null); // 10 min per person
+      // Find the user's entry by userId
+      const myEntry = q.find((qe: QueueEntry) => qe.userId === userId);
+      console.log('Current userId:', userId, 'My entry:', myEntry);
+      if (myEntry) {
+        const myIdx = q.findIndex((qe: QueueEntry) => qe._id === myEntry._id);
+        setInQueue(true);
+        setMyPosition(myIdx + 1);
+        setExpectedWait(myIdx * 10);
+      } else {
+        setInQueue(false);
+        setMyPosition(null);
+        setExpectedWait(null);
+      }
     } catch (err) {
       Alert.alert('Error', 'Failed to fetch queue');
     }
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchQueue();
-    // Optionally, poll every X seconds for real-time updates
-    // const interval = setInterval(fetchQueue, 10000);
-    // return () => clearInterval(interval);
-  }, [salonId, userId]);
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!userId) return;
+      let isActive = true;
+      const pollQueue = async () => {
+        await fetchQueue();
+      };
+      pollQueue();
+      const interval = setInterval(pollQueue, 10000); // Poll every 10 seconds
+      return () => {
+        isActive = false;
+        clearInterval(interval);
+      };
+    }, [salonId, userId]) // userId as dependency
+  );
 
   const handleJoin = async () => {
     try {
@@ -54,12 +76,25 @@ export default function Queue() {
   };
 
   const handleLeave = async () => {
-    try {
-      await leaveQueue(salonId);
-      fetchQueue();
-    } catch (err) {
-      Alert.alert('Error', 'Failed to leave queue');
-    }
+    Alert.alert(
+      'Leave Queue',
+      'Are you sure you want to leave the queue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await leaveQueue(salonId);
+              fetchQueue();
+            } catch (err) {
+              Alert.alert('Error', 'Failed to leave queue');
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (!salonId) {
@@ -74,7 +109,16 @@ export default function Queue() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={async () => {
+          setRefreshing(true);
+          await fetchQueue();
+          setRefreshing(false);
+        }} />
+      }
+    >
       <Text style={styles.title}>{salonName || 'Salon'} - Walk-in Queue</Text>
       {loading ? (
         <ActivityIndicator size="large" color="#A65E5E" style={{ marginTop: 40 }} />
@@ -91,6 +135,9 @@ export default function Queue() {
                   style={entry.userId === userId ? styles.highlight : styles.queueEntry}
                 >
                   {idx + 1}. {entry.userId === userId ? 'You' : entry.name || `Customer #${idx + 1}`}
+                  {entry.joinedAt ? (
+                    <Text style={styles.joinTime}>  •  Joined: {new Date(entry.joinedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                  ) : null}
                 </Text>
               ))
             )}
@@ -207,4 +254,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
+  joinTime: { fontSize: 12, color: '#888', fontWeight: 'normal' },
 });

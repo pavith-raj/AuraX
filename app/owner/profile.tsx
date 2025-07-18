@@ -7,6 +7,7 @@ import { getSalonById, updateSalonProfile } from '../../api/salon';
 import { useSalon } from '../../context/SalonContext';
 import * as ImagePicker from 'expo-image-picker';
 import { fetchTodayBookingCount, fetchDateBookingCounts } from '../../api/appointments';
+import { getQueueCount } from '../../api/apiService';
 
 type IconName = keyof typeof MaterialIcons.glyphMap;
 
@@ -39,6 +40,7 @@ export default function SalonProfile() {
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [dateCounts, setDateCounts] = useState<{ [date: string]: number }>({});
   const [calendarLoading, setCalendarLoading] = useState(false);
+  const [queueCount, setQueueCount] = useState<number>(0);
 
   const menuItems: MenuItem[] = [
     {
@@ -133,6 +135,7 @@ export default function SalonProfile() {
   useEffect(() => {
     if (!salonId) return;
     fetchTodayBookingCount(salonId).then(setTodayCount);
+    getQueueCount(salonId).then(setQueueCount);
   }, [salonId]);
 
   const openCalendar = async () => {
@@ -211,7 +214,7 @@ export default function SalonProfile() {
             </Pressable>
             <View style={styles.statCardModern}>
               <MaterialIcons name="people" size={28} color="#A65E5E" style={styles.statCardIconModern} />
-              <Text style={styles.statNumberLarge}>5</Text>
+              <Text style={styles.statNumberLarge}>{queueCount}</Text>
               <Text style={styles.statLabelModern}>In Queue</Text>
             </View>
             <View style={styles.statCardModern}>

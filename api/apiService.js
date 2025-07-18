@@ -41,3 +41,23 @@ export const leaveQueue = async (salonId) => {
   const res = await api.post(`/queue/${salonId}/leave`);
   return res.data;
 };
+
+export const getMyQueueStatus = async () => {
+  const res = await api.get('/queue/my');
+  return res.data.entries;
+};
+
+export const addOfflineWalkIn = async (salonId, name) => {
+  const res = await api.post(`/queue/${salonId}/add-offline`, { name });
+  return res.data.entry;
+};
+
+export const removeQueueEntry = async (salonId, entryId) => {
+  const res = await api.delete(`/queue/${salonId}/${entryId}`);
+  return res.data;
+};
+
+export const getQueueCount = async (salonId) => {
+  const res = await api.get(`/queue/${salonId}/count`);
+  return res.data.count;
+};

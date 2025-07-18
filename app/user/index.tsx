@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { TextInput } from 'react-native';
-import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Modal, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Modal, FlatList, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, StatusBar } from 'react-native';
 import { Feather } from '@expo/vector-icons'; 
 import BottomNavBar from '../../components/BottomNav'; 
+import { getMyQueueStatus } from '../../api/apiService';
+import { useFocusEffect } from '@react-navigation/native';
+import { AuthContext } from '../../context/AuthContext';
 
 const GOOGLE_API_KEY = 'AIzaSyD9AOX5rjhxoThJDlVYPtkCtLNg7Vivpls';
 
@@ -15,6 +18,7 @@ interface Prediction {
 
 export default function HomePage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useContext(AuthContext);
 
   // State for location modal
   const [locationModalVisible, setLocationModalVisible] = useState(false);
@@ -30,12 +34,59 @@ export default function HomePage() {
     wait: number;
   }>(null);
 
-  // Example: Simulate fetching queue status on mount (replace with real logic)
-  useEffect(() => {
-    // TODO: Replace with real API call or context
-    // setMyQueue({ salonId: '123', salonName: 'Glamour Hub', position: 3, wait: 20 });
-    setMyQueue(null); // Not in queue by default
-  }, []);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Fetch queue status function
+  const fetchQueueStatus = async () => {
+    if (!user || !user._id) {
+      setMyQueue(null);
+      return;
+    }
+    try {
+      const entries = await getMyQueueStatus();
+      console.log('Queue entries from backend:', entries);
+      if (entries && entries.length > 0) {
+        // Find the entry with the current user
+        const entry = entries.find((e: any) => e.userId === user._id);
+        if (entry) {
+          // Fetch the full queue for this salon to get position
+          const res = await fetch(`/api/queue/${entry.salonId}`);
+          const data = await res.json();
+          const queue = data.queue || [];
+          const myIdx = queue.findIndex((qe: any) => qe.userId === user._id);
+          setMyQueue({
+            salonId: entry.salonId,
+            salonName: entry.salonName || 'Salon',
+            position: myIdx >= 0 ? myIdx + 1 : 1,
+            wait: myIdx >= 0 ? myIdx * 10 : 10,
+          });
+        } else {
+          setMyQueue(null);
+        }
+      } else {
+        setMyQueue(null);
+      }
+    } catch (e) {
+      setMyQueue(null);
+    }
+  };
+
+  // Fetch queue status every time the screen is focused and user is available
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!user || !user._id) return;
+      let isActive = true;
+      const poll = async () => {
+        await fetchQueueStatus();
+      };
+      poll();
+      const interval = setInterval(poll, 10000);
+      return () => {
+        isActive = false;
+        clearInterval(interval);
+      };
+    }, [user && user._id])
+  );
 
   // Fetch predictions from Google Places API
   const fetchPredictions = async (input: string) => {
@@ -166,7 +217,17 @@ export default function HomePage() {
 
 
     {/* Real-Time Booking */}
-    <ScrollView contentContainerStyle={styles.scrollContent} style={{ marginTop: 0, marginBottom: 0 }}>
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      style={{ marginTop: 0, marginBottom: 0 }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={async () => {
+          setRefreshing(true);
+          await fetchQueueStatus();
+          setRefreshing(false);
+        }} />
+      }
+    >
       <View style={styles.bookingSection}>
         <Text style={styles.sectionTitle}>Book Your Service</Text>
         <View style={styles.serviceCategories}>
@@ -219,16 +280,7 @@ export default function HomePage() {
         >
           <Text style={styles.queueText}>Join Walk-In Queue</Text>
         </TouchableOpacity>
-        {myQueue && (
-          <TouchableOpacity
-            style={styles.myQueueButton}
-            onPress={() => router.push(`/queue?salonId=${myQueue.salonId}&salonName=${encodeURIComponent(myQueue.salonName)}`)}
-          >
-            <Text style={styles.myQueueText}>
-              My Queue: #{myQueue.position} • {myQueue.wait} min
-            </Text>
-          </TouchableOpacity>
-        )}
+        {/* Removed My Queue button */}
       </View>
 
       {/* Featured Salons */}

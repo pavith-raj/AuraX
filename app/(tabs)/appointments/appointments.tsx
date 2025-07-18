@@ -3,12 +3,19 @@ import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, 
 import BottomNavBar from '../../../components/BottomNav';
 import { fetchAppointments, cancelAppointment } from '../../../api/appointments';
 import { AuthContext } from '../../../context/AuthContext';
+import { getQueue, getMyQueueStatus } from '../../../api/apiService';
+import { useRouter } from 'expo-router';
 
 const AppointmentsPage = () => {
   const { user } = useContext(AuthContext); 
+  const router = useRouter();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cancelingId, setCancelingId] = useState(null);
+  const [queueStatus, setQueueStatus] = useState<any>(null);
+  const [queueLoading, setQueueLoading] = useState(false);
+  const [queuePosition, setQueuePosition] = useState<number | null>(null);
+  const [queueWait, setQueueWait] = useState<number | null>(null);
 
   useEffect(() => {
     console.log('User from AuthContext:', user);
@@ -46,10 +53,42 @@ const AppointmentsPage = () => {
 useEffect(() => {
   if (user && user._id) {
     loadAppointments();
+    fetchQueueStatus();
   }
 }, [user]);
 
-  const handleCancel = async (id) => {
+  const fetchQueueStatus = async () => {
+    setQueueLoading(true);
+    try {
+      const entries = await getMyQueueStatus();
+      if (entries && entries.length > 0) {
+        const entry = entries.find((e: any) => e.userId === user._id);
+        if (entry) {
+          setQueueStatus(entry);
+          // Fetch the full queue for this salon to get position and wait time
+          const fullQueue = await getQueue(entry.salonId);
+          const myIdx = fullQueue.findIndex((qe: any) => qe.userId === user._id);
+          setQueuePosition(myIdx >= 0 ? myIdx + 1 : null);
+          setQueueWait(myIdx >= 0 ? myIdx * 10 : null);
+        } else {
+          setQueueStatus(null);
+          setQueuePosition(null);
+          setQueueWait(null);
+        }
+      } else {
+        setQueueStatus(null);
+        setQueuePosition(null);
+        setQueueWait(null);
+      }
+    } catch (e) {
+      setQueueStatus(null);
+      setQueuePosition(null);
+      setQueueWait(null);
+    }
+    setQueueLoading(false);
+  };
+
+  const handleCancel = async (id: any) => {
     setCancelingId(id);
     try {
       await cancelAppointment(id);
@@ -60,7 +99,7 @@ useEffect(() => {
     setCancelingId(null);
   };
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({ item }: { item: any }) => (
     <View style={styles.appointmentCard}>
       <Text style={styles.salonName}>{item.salonName || item.salon || 'Salon'}</Text>
       <Text style={styles.serviceName}>Service: {item.serviceName || item.service}</Text>
@@ -88,6 +127,50 @@ useEffect(() => {
   return (
     <>
       <View style={styles.container}>
+        {/* My Queue Button at the top */}
+        <TouchableOpacity
+          style={{
+            backgroundColor: '#fff',
+            borderColor: '#A65E5E',
+            borderWidth: 1,
+            borderRadius: 8,
+            paddingVertical: 10,
+            paddingHorizontal: 18,
+            alignItems: 'center',
+            marginBottom: 18,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+          }}
+          onPress={() => {
+            if (queueStatus && queueStatus.salonId) {
+              // Navigate to queue screen with correct params
+              router.push({
+                pathname: '/(tabs)/queue/queue',
+                params: {
+                  salonId: queueStatus.salonId,
+                  salonName: queueStatus.salonName || 'Salon',
+                },
+              });
+            } else {
+              Alert.alert('Queue', 'You are not currently in any walk-in queue.');
+            }
+          }}
+        >
+          <Text style={{ color: '#A65E5E', fontWeight: 'bold', fontSize: 15 }}>
+            My Queue
+          </Text>
+          {queueLoading ? (
+            <ActivityIndicator size="small" color="#A65E5E" style={{ marginLeft: 10 }} />
+          ) : queueStatus && queuePosition !== null && queueWait !== null ? (
+            <Text style={{ color: '#A65E5E', marginLeft: 10 }}>
+              Position: #{queuePosition} • {queueWait} min
+            </Text>
+          ) : (
+            <Text style={{ color: '#888', marginLeft: 10 }}>
+              Not in queue
+            </Text>
+          )}
+        </TouchableOpacity>
         <Text style={styles.title}>Your Appointments</Text>
         {loading ? (
           <ActivityIndicator size="large" color="#A65E5E" style={{ marginTop: 40 }} />
