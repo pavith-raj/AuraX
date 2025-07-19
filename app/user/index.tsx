@@ -256,12 +256,12 @@ export default function HomePage() {
         <Text style={styles.sectionTitle}>AI Recommendations</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.aiCards}>
-            <View style={styles.aiCard}>
+            <TouchableOpacity style={styles.aiCard} onPress={() => router.push('/user/hairstyleSuggestion')}>
             <Image source={require('../../assets/images/hairstyle2.jpg')} style={styles.aiImage} />
               <View style={styles.overlay}>
                 <Text style={styles.aiCardTitle}>Hairstyle Suggestions</Text>
               </View>
-            </View>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.aiCard} onPress={() => router.push('/skinAnalysis')}>
             <Image source={require('../../assets/images/cosmetic.jpg')} style={styles.aiImage} />
               <View style={styles.overlay}>

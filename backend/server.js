@@ -9,6 +9,8 @@ const appointmentRoutes = require('./routes/appointments');
 const skinAnalysisRoutes = require('./skinAnalysis');
 const queueRoutes = require('./routes/queue');
 const productsRoutes = require('./routes/products');
+const faceAnalysisRoutes = require('./routes/faceAnalysis');
+const hairstyleGenerateRoutes = require('./routes/hairstyleGenerate');
 
 dotenv.config();
 
@@ -34,6 +36,8 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/skin', skinAnalysisRoutes);
 app.use('/api/queue', queueRoutes);
 app.use('/api/products', productsRoutes);
+app.use('/api/face-analysis', faceAnalysisRoutes);
+app.use('/api/hairstyle-generate', hairstyleGenerateRoutes);
 
 // Connect to MongoDB
 connectDB(); // ✅ Call the connectDB function
