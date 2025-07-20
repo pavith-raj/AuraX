@@ -5,7 +5,7 @@ export const analyzeSkinImage = async (imageUri) => {
     const formData = new FormData();
     formData.append('image', {
       uri: imageUri,
-      type: 'image/jpeg',
+      type: 'image/jpeg', 
       name: 'skin_image.jpg',
     });
 

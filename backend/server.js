@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors'); // Allow mobile app to connect
 const dotenv = require('dotenv'); // To store secrets safely
 const morgan = require('morgan'); // Import morgan
+
+dotenv.config();
+
 const connectDB = require('./config/db'); // ✅ Import connectDB function
 const authRoutes = require('./routes/auth'); 
 const salonsRoutes = require('./routes/salons');
@@ -10,9 +13,10 @@ const skinAnalysisRoutes = require('./skinAnalysis');
 const queueRoutes = require('./routes/queue');
 const productsRoutes = require('./routes/products');
 const faceAnalysisRoutes = require('./routes/faceAnalysis');
-const hairstyleGenerateRoutes = require('./routes/hairstyleGenerate');
+const hairstylePreviewRoutes = require('./routes/hairstylePreview');
+const uploadRoutes = require('./routes/upload');
 
-dotenv.config();
+
 
 const app = express();
 
@@ -37,7 +41,12 @@ app.use('/api/skin', skinAnalysisRoutes);
 app.use('/api/queue', queueRoutes);
 app.use('/api/products', productsRoutes);
 app.use('/api/face-analysis', faceAnalysisRoutes);
-app.use('/api/hairstyle-generate', hairstyleGenerateRoutes);
+app.use('/api/hairstyle-preview', hairstylePreviewRoutes);
+app.use('/api/upload', uploadRoutes);
+
+// Serve static files from the uploads directory
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Connect to MongoDB
 connectDB(); // ✅ Call the connectDB function

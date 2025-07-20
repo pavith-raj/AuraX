@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, ScrollView, TextInput, Alert, SafeAreaView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import axiosInstance from '../../api/axiosInstance';
+import axios from 'axios';
+import api from '../../api/axiosInstance';
 
-const recommendations = {
+type FaceShape = 'oval' | 'round' | 'square' | 'heart' | 'diamond';
+type Gender = 'male' | 'female';
+
+const recommendations: Record<FaceShape, Record<Gender, string[]>> = {
   oval: {
     male: ['Pompadour', 'Undercut', 'Buzz Cut'],
     female: ['Long Layers', 'Curtain Bangs', 'High Ponytail'],
@@ -28,70 +32,16 @@ const recommendations = {
   },
 };
 
-const hairstyleImages = {
-  oval: {
-    male: {
-      Pompadour: require('../../assets/hairstyles/oval/male/pompadour.jpg'),
-      Undercut: require('../../assets/hairstyles/oval/male/undercut.jpg'),
-      'Buzz Cut': require('../../assets/hairstyles/oval/male/buzzcut.jpg'),
-    },
-    female: {
-      'Long Layers': require('../../assets/hairstyles/oval/female/long_layers.jpg'),
-      'Curtain Bangs': require('../../assets/hairstyles/oval/female/curtain_bangs.jpg'),
-      'High Ponytail': require('../../assets/hairstyles/oval/female/high_ponytail.jpg'),
-    },
-  },
-  round: {
-    male: {
-      'Taper Fade': require('../../assets/hairstyles/round/male/taper_fade.jpg'),
-      Quiff: require('../../assets/hairstyles/round/male/quiff.jpg'),
-    },
-    female: {
-      'Side Bangs': require('../../assets/hairstyles/round/female/side_bangs.jpg'),
-      'Layered Bob': require('../../assets/hairstyles/round/female/layered_bob.jpg'),
-    },
-  },
-  square: {
-    male: {
-      'Crew Cut': require('../../assets/hairstyles/square/male/crew_cut.jpg'),
-      'Classic Taper': require('../../assets/hairstyles/square/male/classic_taper.jpg'),
-    },
-    female: {
-      'Soft Waves': require('../../assets/hairstyles/square/female/soft_waves.jpg'),
-      'Side Part Bob': require('../../assets/hairstyles/square/female/side_part_bob.jpg'),
-    },
-  },
-  heart: {
-    male: {
-      'Textured Crop': require('../../assets/hairstyles/heart/male/textured_crop.jpg'),
-      Fringe: require('../../assets/hairstyles/heart/male/fringe.jpg'),
-    },
-    female: {
-      'Chin-Length Bob': require('../../assets/hairstyles/heart/female/chin_length_bob.jpg'),
-      'Side Swept Bangs': require('../../assets/hairstyles/heart/female/side_swept_bangs.jpg'),
-    },
-  },
-  diamond: {
-    male: {
-      'Messy Fringe': require('../../assets/hairstyles/diamond/male/messy_fringe.jpg'),
-      'Slick Back': require('../../assets/hairstyles/diamond/male/slick_back.jpg'),
-    },
-    female: {
-      'Shoulder Length': require('../../assets/hairstyles/diamond/female/shoulder_length.jpg'),
-      'Deep Side Part': require('../../assets/hairstyles/diamond/female/deep_side_part.jpg'),
-    },
-  },
-};
-
 export default function HairstyleSuggestion() {
   const [image, setImage] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [result, setResult] = useState<{ faceShape: string; gender: string } | null>(null);
+  const [aiResultUrl, setAiResultUrl] = useState<string | null>(null);
+  const [selectedHairstyle, setSelectedHairstyle] = useState<string>('');
+  const [color, setColor] = useState<string>('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selectedHairstyle, setSelectedHairstyle] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [generationMessage, setGenerationMessage] = useState<string | null>(null);
+  const [faceShape, setFaceShape] = useState<string>('');
+  const [gender, setGender] = useState<string>('');
+  const [uploading, setUploading] = useState(false);
   const router = useRouter();
 
   const pickImage = async () => {
@@ -104,6 +54,11 @@ export default function HairstyleSuggestion() {
     let pickerResult = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 });
     if (!pickerResult.canceled && pickerResult.assets && pickerResult.assets.length > 0) {
       setImage(pickerResult.assets[0].uri);
+      setAiResultUrl(null);
+      setFaceShape('');
+      setGender('');
+      setSelectedHairstyle('');
+      analyzeImage(pickerResult.assets[0].uri);
     }
   };
 
@@ -117,155 +72,180 @@ export default function HairstyleSuggestion() {
     let pickerResult = await ImagePicker.launchCameraAsync({ quality: 1 });
     if (!pickerResult.canceled && pickerResult.assets && pickerResult.assets.length > 0) {
       setImage(pickerResult.assets[0].uri);
+      setAiResultUrl(null);
+      setFaceShape('');
+      setGender('');
+      setSelectedHairstyle('');
+      analyzeImage(pickerResult.assets[0].uri);
     }
   };
 
-  const analyzeImage = async () => {
-    if (!image) return;
+  // Helper to upload image to a public image host (imgur, cloudinary, etc.)
+  // For demo, this is a placeholder. You must implement your own image upload logic.
+  const uploadImageAndGetUrl = async (localUri: string): Promise<string> => {
+    const data = new FormData();
+    data.append('image', {
+      uri: localUri,
+      type: 'image/jpeg',
+      name: 'upload.jpg',
+    } as any);
+
+    const res = await api.post('/upload', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    if (res.data && res.data.url) {
+      return res.data.url;
+    } else {
+      throw new Error('Failed to upload image to server');
+    }
+  };
+
+  // Analyze image to get face shape and gender
+  const analyzeImage = async (imgUri: string) => {
     setUploading(true);
     setError('');
-    setResult(null);
+    setFaceShape('');
+    setGender('');
     try {
       let formData = new FormData();
       formData.append('file', {
-        uri: image,
+        uri: imgUri,
         name: 'photo.jpg',
         type: 'image/jpeg',
       } as any);
-      const res = await axiosInstance.post('/face-analysis', formData, {
+      const res = await api.post('/face-analysis', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
       const data = res.data;
-      setResult(data);
-    } catch (e) {
-      setError('Analysis failed. Please try another image.');
+      if (data.faceShape && data.gender) {
+        setFaceShape(data.faceShape);
+        setGender(data.gender);
+      } else {
+        setError('Face analysis failed. Please try another image.');
+      }
+    } catch (e: any) {
+      setError('Face analysis failed. Please try another image.');
     } finally {
       setUploading(false);
     }
   };
 
   const generateHairstyle = async () => {
-    if (!image || !selectedHairstyle) return;
-    setGenerating(true);
-    setGeneratedImage(null);
-    setGenerationMessage(null);
+    if (!image || !selectedHairstyle) {
+      setError('Please select an image and a hairstyle.');
+      return;
+    }
+    setLoading(true);
     setError('');
+    setAiResultUrl(null);
     try {
-      let formData = new FormData();
-      formData.append('file', {
-        uri: image,
-        name: 'photo.jpg',
-        type: 'image/jpeg',
-      } as any);
-      formData.append('prompt', selectedHairstyle);
-      const res = await axiosInstance.post('/hairstyle-generate', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      // 1. Upload the image to get a public URL
+      const imageUrl = await uploadImageAndGetUrl(image);
+      // 2. Call your backend API
+      const res = await api.post('/hairstyle-preview', {
+        imageUrl,
+        hairstyle: selectedHairstyle,
+        color,
       });
-      const data = res.data;
-      if (data.status === 'success' && data.generated_image) {
-        setGeneratedImage(`data:image/jpeg;base64,${data.generated_image}`);
-        setGenerationMessage(data.message || 'Preview generated successfully!');
+      if (res.data && res.data.result) {
+        setAiResultUrl(res.data.result);
       } else {
-        setGenerationMessage(data.message || 'Failed to generate preview.');
+        setError('No result from AI API.');
       }
-    } catch (e) {
-      console.error('Generation error:', e);
-      setGenerationMessage('Error generating hairstyle preview.');
+    } catch (e: any) {
+      setError(e.message || 'Failed to generate hairstyle preview.');
     } finally {
-      setGenerating(false);
+      setLoading(false);
     }
   };
 
   let hairstyleList: string[] = [];
   if (
-    result &&
-    (recommendations as any)[result.faceShape] &&
-    (recommendations as any)[result.faceShape][result.gender]
+    faceShape &&
+    gender &&
+    (['oval', 'round', 'square', 'heart', 'diamond'] as FaceShape[]).includes(faceShape as FaceShape) &&
+    (['male', 'female'] as Gender[]).includes(gender as Gender)
   ) {
-    hairstyleList = (recommendations as any)[result.faceShape][result.gender];
+    hairstyleList = recommendations[faceShape as FaceShape][gender as Gender];
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 16 }}>
-        <Feather name="arrow-left" size={24} color="#A65E5E" />
-      </TouchableOpacity>
-      <Text style={styles.title}>Hairstyle Suggestions</Text>
-      <Text style={styles.subtitle}>Upload or capture your photo to get personalized hairstyle ideas!</Text>
-      <View style={styles.imageSection}>
-        {image ? (
-          <Image source={{ uri: image }} style={styles.imagePreview} />
-        ) : (
-          <View style={styles.placeholder}><Feather name="user" size={60} color="#ccc" /></View>
-        )}
-      </View>
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.button} onPress={pickImage}>
-          <Feather name="image" size={18} color="#fff" />
-          <Text style={styles.buttonText}>Upload</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={takePhoto}>
-          <Feather name="camera" size={18} color="#fff" />
-          <Text style={styles.buttonText}>Camera</Text>
-        </TouchableOpacity>
-      </View>
-      {image && (
-        <TouchableOpacity style={styles.analyzeButton} onPress={analyzeImage} disabled={uploading}>
-          {uploading ? <ActivityIndicator color="#fff" /> : <Text style={styles.analyzeText}>Analyze</Text>}
-        </TouchableOpacity>
-      )}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {result && (
-        <View style={styles.resultSection}>
-          <Text style={styles.resultText}>Face Shape: <Text style={{ fontWeight: 'bold' }}>{result.faceShape}</Text></Text>
-          <Text style={styles.resultText}>Gender: <Text style={{ fontWeight: 'bold' }}>{result.gender}</Text></Text>
-          <Text style={styles.suggestionTitle}>Suggested Hairstyles:</Text>
-          {hairstyleList.length > 0 ? (
-            hairstyleList.map((h, i) => (
-              <TouchableOpacity
-                key={i}
-                style={selectedHairstyle === h ? styles.selectedHairstyle : styles.suggestionItemBtn}
-                onPress={() => setSelectedHairstyle(h)}
-              >
-                <Text style={selectedHairstyle === h ? styles.selectedHairstyleText : styles.suggestionItem}>{h}</Text>
-              </TouchableOpacity>
-            ))
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F4F4' }}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackBtn}>
+            <Feather name="arrow-left" size={24} color="#A65E5E" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>AI Hairstyle Suggestions</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <Text style={styles.subtitle}>Upload or capture your photo to get face-based hairstyle suggestions and AI preview!</Text>
+        <View style={styles.imageSection}>
+          {image ? (
+            <Image source={{ uri: image }} style={styles.imagePreview} />
           ) : (
-            <Text style={styles.suggestionItem}>No suggestions found.</Text>
-          )}
-          {selectedHairstyle && result &&
-            hairstyleImages[result.faceShape] &&
-            hairstyleImages[result.faceShape][result.gender] &&
-            hairstyleImages[result.faceShape][result.gender][selectedHairstyle] && (
-              <View style={styles.generatedImageSection}>
-                <Text style={styles.generatedImageTitle}>Hairstyle Preview:</Text>
-                <Image
-                  source={hairstyleImages[result.faceShape][result.gender][selectedHairstyle]}
-                  style={styles.generatedImage}
-                />
-              </View>
-            )}
-          {selectedHairstyle && (
-            <TouchableOpacity style={styles.generateButton} onPress={generateHairstyle} disabled={generating}>
-              {generating ? <ActivityIndicator color="#fff" /> : <Text style={styles.generateText}>Preview Hairstyle</Text>}
-            </TouchableOpacity>
-          )}
-          {generationMessage && (
-            <Text style={styles.generationResult}>{generationMessage}</Text>
-          )}
-          {generatedImage && (
-            <View style={styles.generatedImageSection}>
-              <Text style={styles.generatedImageTitle}>Generated Preview:</Text>
-              <Image source={{ uri: generatedImage }} style={styles.generatedImage} />
-            </View>
+            <View style={styles.placeholder}><Feather name="user" size={60} color="#ccc" /></View>
           )}
         </View>
-      )}
-    </ScrollView>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity style={styles.button} onPress={pickImage}>
+            <Feather name="image" size={18} color="#fff" />
+            <Text style={styles.buttonText}>Upload</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={takePhoto}>
+            <Feather name="camera" size={18} color="#fff" />
+            <Text style={styles.buttonText}>Camera</Text>
+          </TouchableOpacity>
+        </View>
+        {uploading && <ActivityIndicator color="#A65E5E" style={{ marginBottom: 10 }} />}
+        {faceShape && gender && (
+          <View style={styles.resultSection}>
+            <Text style={styles.resultText}>Face Shape: <Text style={{ fontWeight: 'bold' }}>{faceShape}</Text></Text>
+            <Text style={styles.resultText}>Gender: <Text style={{ fontWeight: 'bold' }}>{gender}</Text></Text>
+            <Text style={styles.suggestionTitle}>Suggested Hairstyles:</Text>
+            {hairstyleList.length > 0 ? (
+              hairstyleList.map((h, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={selectedHairstyle === h ? styles.selectedHairstyle : styles.suggestionItemBtn}
+                  onPress={() => setSelectedHairstyle(h)}
+                >
+                  <Text style={selectedHairstyle === h ? styles.selectedHairstyleText : styles.suggestionItem}>{h}</Text>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text style={styles.suggestionItem}>No suggestions found.</Text>
+            )}
+          </View>
+        )}
+        <TextInput
+          style={styles.input}
+          placeholder="Or type a custom hairstyle (optional)"
+          value={selectedHairstyle}
+          onChangeText={setSelectedHairstyle}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Hair color (optional)"
+          value={color}
+          onChangeText={setColor}
+        />
+        <TouchableOpacity style={styles.generateButton} onPress={generateHairstyle} disabled={loading || !selectedHairstyle}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.generateText}>Generate AI Preview</Text>}
+        </TouchableOpacity>
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {aiResultUrl && (
+          <View style={styles.generatedImageSection}>
+            <Text style={styles.generatedImageTitle}>AI Hairstyle Preview:</Text>
+            <Image source={{ uri: aiResultUrl }} style={styles.generatedImage} />
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -275,6 +255,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F4F4',
     flexGrow: 1,
     alignItems: 'center',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 16,
+  },
+  headerBackBtn: {
+    padding: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#A65E5E',
   },
   title: {
     fontSize: 24,
@@ -324,14 +323,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 6,
   },
-  analyzeButton: {
+  input: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 10,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  generateButton: {
     backgroundColor: '#A65E5E',
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
     marginBottom: 12,
   },
-  analyzeText: {
+  generateText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
@@ -390,25 +399,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#fff',
     fontWeight: 'bold',
-  },
-  generateButton: {
-    backgroundColor: '#A65E5E',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 6,
-  },
-  generateText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
-  generationResult: {
-    marginTop: 8,
-    color: '#333',
-    fontSize: 15,
-    textAlign: 'center',
   },
   generatedImageSection: {
     marginTop: 16,

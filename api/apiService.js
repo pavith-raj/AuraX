@@ -5,7 +5,7 @@ export const fetchServices = async (salonId) => {
   const res = await api.get(`/salons/${salonId}`);
   return res.data.services || [];
 };
-
+ 
 export const addService = async (salonId, name) => {
   if (!salonId) throw new Error('No salonId provided to addService');
   // Get the response from the API call
