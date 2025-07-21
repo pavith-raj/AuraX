@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Animated, Pressable, ActivityIndicator, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Animated, Pressable, ActivityIndicator, Alert, Modal, FlatList, Dimensions } from 'react-native';
 import { SafeAreaView, StatusBar } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -28,6 +28,7 @@ type SalonType = {
     lng?: number;
   };
   locationAddress?: string;
+  galleryImages?: string[];
 };
 
 export default function SalonProfile() {
@@ -41,6 +42,9 @@ export default function SalonProfile() {
   const [dateCounts, setDateCounts] = useState<{ [date: string]: number }>({});
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [queueCount, setQueueCount] = useState<number>(0);
+  const [galleryModalVisible, setGalleryModalVisible] = useState(false);
+  const [galleryModalIndex, setGalleryModalIndex] = useState(0);
+  const screenWidth = Dimensions.get('window').width;
 
   const menuItems: MenuItem[] = [
     {
@@ -202,6 +206,59 @@ export default function SalonProfile() {
             <Text style={styles.salonHours}>{salon ? `Open: ${salon.openingTime || '9:00 AM'} - ${salon.closingTime || '8:00 PM'}` : 'Open: 9:00 AM - 8:00 PM'}</Text>
           </View>
         </View>
+
+        {/* Salon Gallery Card */}
+        {salon?.galleryImages && salon.galleryImages.length > 0 && (
+          <View style={styles.galleryCard}>
+            <Text style={styles.galleryTitle}>Salon Gallery</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8 }}>
+              {salon.galleryImages.map((img, idx) => (
+                <TouchableOpacity
+                  key={img}
+                  onPress={() => {
+                    setGalleryModalIndex(idx);
+                    setGalleryModalVisible(true);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Image
+                    source={{ uri: img }}
+                    style={styles.galleryImage}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Gallery Modal */}
+        <Modal
+          visible={galleryModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setGalleryModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <FlatList
+              data={salon?.galleryImages || []}
+              horizontal
+              pagingEnabled
+              initialScrollIndex={galleryModalIndex}
+              getItemLayout={(_, index) => ({ length: screenWidth, offset: screenWidth * index, index })}
+              showsHorizontalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <View style={{ width: screenWidth, height: '100%', justifyContent: 'center', alignItems: 'center' }}>
+                  <Image source={{ uri: item }} style={styles.fullscreenImage} resizeMode="contain" />
+                </View>
+              )}
+              keyExtractor={item => item}
+            />
+            <TouchableOpacity style={styles.closeModalBtn} onPress={() => setGalleryModalVisible(false)}>
+              <MaterialIcons name="close" size={32} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </Modal>
 
         {/* Quick Stats */}
         <View style={styles.statsScrollModern}>
@@ -468,6 +525,52 @@ const styles = StyleSheet.create({
     color: 'orange',
     fontSize: 13,
     marginTop: 2,
+  },
+  galleryCard: {
+    backgroundColor: 'white',
+    borderRadius: 18,
+    marginHorizontal: 18,
+    marginBottom: 14,
+    padding: 16,
+    elevation: 2,
+    shadowColor: '#A65E5E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
+  },
+  galleryTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#6B2E2E',
+    marginBottom: 8,
+  },
+  galleryImage: {
+    width: 100,
+    height: 80,
+    borderRadius: 10,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#A65E5E',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenImage: {
+    width: '100%',
+    height: '80%',
+    borderRadius: 10,
+  },
+  closeModalBtn: {
+    position: 'absolute',
+    top: 40,
+    right: 24,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 4,
+    zIndex: 10,
   },
 });
 

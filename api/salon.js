@@ -31,3 +31,73 @@ export const updateSalonProfile = async (salonId, updateData) => {
         throw error;
     }
 };
+
+export const addSalonGalleryImage = async (salonId, imageUrl) => {
+    try {
+        const response = await api.post(`/salons/${salonId}/gallery`, { imageUrl });
+        return response.data;
+    } catch (error) {
+        console.error(`Failed to add gallery image for salon ${salonId}:`, error);
+        throw error;
+    }
+};
+
+export const removeSalonGalleryImage = async (salonId, imageUrl) => {
+    try {
+        const response = await api.delete(`/salons/${salonId}/gallery`, { data: { imageUrl } });
+        return response.data;
+    } catch (error) {
+        console.error(`Failed to remove gallery image for salon ${salonId}:`, error);
+        throw error;
+    }
+};
+
+export const getSalonReviews = async (salonId) => {
+    try {
+        const response = await api.get(`/salons/${salonId}/reviews`);
+        return response.data;
+    } catch (error) {
+        console.error(`Failed to fetch reviews for salon ${salonId}:`, error);
+        throw error;
+    }
+};
+
+export const postSalonReview = async (salonId, reviewData) => {
+    try {
+        const response = await api.post(`/salons/${salonId}/reviews`, reviewData);
+        return response.data;
+    } catch (error) {
+        console.error(`Failed to post review for salon ${salonId}:`, error);
+        throw error;
+    }
+};
+
+export const editSalonReview = async (salonId, reviewId, data) => {
+    try {
+        const response = await api.put(`/salons/${salonId}/reviews/${reviewId}`, data);
+        return response.data;
+    } catch (error) {
+        console.error(`Failed to edit review for salon ${salonId}:`, error);
+        throw error;
+    }
+};
+
+export const deleteSalonReview = async (salonId, reviewId) => {
+    try {
+        const response = await api.delete(`/salons/${salonId}/reviews/${reviewId}`);
+        return response.data;
+    } catch (error) {
+        console.error(`Failed to delete review for salon ${salonId}:`, error);
+        throw error;
+    }
+};
+
+export const getTopSalons = async () => {
+    try {
+        const response = await api.get('/salons/top');
+        return response.data;
+    } catch (error) {
+        console.error('Failed to fetch top salons:', error);
+        throw error;
+    }
+};

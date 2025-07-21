@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import BottomNavBar from '../../../components/BottomNav'; 
 import { getSalons } from '../../../api/salon';
@@ -10,6 +10,7 @@ interface Salon {
   salonName?: string;
   rating: number;
   salonAddress: string;
+  profileImage?: string;
 }
 
 export default function SalonList() {
@@ -121,20 +122,24 @@ export default function SalonList() {
         }
       }}
     >
-      <Text style={styles.salonName}>{salon.salonName || salon.name}</Text>
       <View style={styles.rowAlign}>
-      <Text style={styles.rating}>⭐ {salon.rating}</Text>
-      <Text style={styles.salonAddress}>📍{salon.salonAddress}</Text>
-
-    {/* Show Details button only in booking flow */}
-    {fromBooking ? (
-      <TouchableOpacity
-        style={styles.detailsBtn}
-        onPress={() => router.push(`/user/salons/details?id=${salon._id}`)}
-      >
-        <Text style={styles.detailsBtnText}>Details</Text>
-    
-      </TouchableOpacity>
+        <Image
+          source={{ uri: salon.profileImage || 'https://via.placeholder.com/80' }}
+          style={styles.salonProfileImage}
+        />
+        <Text style={styles.salonName}>{salon.salonName || salon.name}</Text>
+      </View>
+      <View style={styles.rowAlign}>
+        <Text style={styles.rating}>⭐ {salon.rating}</Text>
+        <Text style={styles.salonAddress}>📍{salon.salonAddress}</Text>
+        {/* Show Details button only in booking flow */}
+        {fromBooking ? (
+          <TouchableOpacity
+            style={styles.detailsBtn}
+            onPress={() => router.push(`/user/salons/details?id=${salon._id}`)}
+          >
+            <Text style={styles.detailsBtnText}>Details</Text>
+          </TouchableOpacity>
         ) : null}
       </View>
     </TouchableOpacity>
@@ -246,5 +251,14 @@ const styles = StyleSheet.create({
     color: '#888',
     marginLeft: 8,
     marginTop: 2,
+  },
+  salonProfileImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#A65E5E',
+    backgroundColor: '#eee',
   },
 });

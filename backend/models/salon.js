@@ -32,7 +32,16 @@ const salonSchema = new mongoose.Schema({
   // Other fields
   role: { type: String, default: 'owner' },
   isApproved: { type: Boolean, default: false },
-  profileImage: { type: String, default: '' }
+  profileImage: { type: String, default: '' },
+  galleryImages: { type: [String], default: [] },
+  reviews: [{
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    userName: { type: String, required: true },
+    rating: { type: Number, required: true, min: 1, max: 5 },
+    text: { type: String },
+    images: { type: [String], default: [] },
+    createdAt: { type: Date, default: Date.now }
+  }]
 });
 
 // Hash password before saving

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { TextInput } from 'react-native';
-import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Modal, FlatList, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Modal, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, StatusBar } from 'react-native';
 import { Feather } from '@expo/vector-icons'; 
@@ -8,6 +8,7 @@ import BottomNavBar from '../../components/BottomNav';
 import { getMyQueueStatus } from '../../api/apiService';
 import { useFocusEffect } from '@react-navigation/native';
 import { AuthContext } from '../../context/AuthContext';
+import { getTopSalons } from '../../api/salon';
 
 const GOOGLE_API_KEY = 'AIzaSyD9AOX5rjhxoThJDlVYPtkCtLNg7Vivpls';
 
@@ -35,6 +36,8 @@ export default function HomePage() {
   }>(null);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [topSalons, setTopSalons] = useState<any[]>([]);
+  const [topLoading, setTopLoading] = useState(true);
 
   // Fetch queue status function
   const fetchQueueStatus = async () => {
@@ -87,6 +90,13 @@ export default function HomePage() {
       };
     }, [user && user._id])
   );
+
+  useEffect(() => {
+    getTopSalons()
+      .then(data => setTopSalons(data))
+      .catch(() => setTopSalons([]))
+      .finally(() => setTopLoading(false));
+  }, []);
 
   // Fetch predictions from Google Places API
   const fetchPredictions = async (input: string) => {
@@ -283,42 +293,42 @@ export default function HomePage() {
         {/* Removed My Queue button */}
       </View>
 
-      {/* Featured Salons */}
+      {/* Top Salons */}
       <View style={styles.featuredSalons}>
-        <Text style={styles.sectionTitle}>Featured Salons</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.salonsContainer}>
-          <View style={styles.salonCard}>
-            <Image source={require('../../assets/images/salon1.jpg')} style={styles.salonImage} />
-              <View style={styles.salonInfo}>
-                <Text style={styles.salonName}>Glamour Hub</Text>
-                <Text style={styles.salonLocation}>Kadri, Mangalore</Text>
-                <View style={styles.ratingRow}>
-                  <Text style={styles.salonRating}>⭐⭐⭐⭐☆</Text>
-                  <Text style={styles.reviewCount}>(120)</Text>
-                </View>
-                <TouchableOpacity style={styles.bookButton} onPress={() => router.push('/book/appointmentBooking')}>
-                  <Text style={styles.bookButtonText}>Book Now</Text>
-                </TouchableOpacity>
-              </View>
+        <Text style={styles.sectionTitle}>Top Salons</Text>
+        {topLoading ? (
+          <ActivityIndicator color="#A65E5E" />
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.salonsContainer}>
+              {topSalons.length === 0 ? (
+                <Text style={{ color: '#888', padding: 16 }}>No top salons found.</Text>
+              ) : (
+                topSalons.map((salon) => (
+                  <TouchableOpacity
+                    key={salon._id}
+                    style={styles.salonCard}
+                    onPress={() => router.push(`/user/salons/details?id=${salon._id}`)}
+                    activeOpacity={0.85}
+                  >
+                    <Image source={{ uri: salon.profileImage || 'https://via.placeholder.com/120' }} style={styles.salonImage} />
+                    <View style={styles.salonInfo}>
+                      <Text style={styles.salonName}>{salon.salonName || salon.name}</Text>
+                      <Text style={styles.salonLocation}>{salon.salonAddress}</Text>
+                      <View style={styles.ratingRow}>
+                        <Text style={styles.salonRating}>{'⭐'.repeat(Math.round(salon.rating))}</Text>
+                        <Text style={styles.reviewCount}>({salon.reviews ? salon.reviews.length : 0})</Text>
+                      </View>
+                      <TouchableOpacity style={styles.bookButton} onPress={() => router.push(`/user/salons/details?id=${salon._id}`)}>
+                        <Text style={styles.bookButtonText}>Book Now</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
-            <View style={styles.salonCard}>
-              <Image source={require('../../assets/images/salon2.jpg')} style={styles.salonImage} />
-              <View style={styles.salonInfo}>
-                <Text style={styles.salonName}>Elite Salonb</Text>
-                <Text style={styles.salonLocation}>Kadri, Mangalore</Text>
-                <View style={styles.ratingRow}>
-                  <Text style={styles.salonRating}>⭐⭐⭐⭐⭐</Text>
-                  <Text style={styles.reviewCount}>(120)</Text>
-                </View>
-                <TouchableOpacity style={styles.bookButton} onPress={() => router.push('/book/appointmentBooking')}>
-                  <Text style={styles.bookButtonText}>Book Now</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-          </View>
-        </ScrollView>
+          </ScrollView>
+        )}
       </View>
       
     {/* Promotions */}

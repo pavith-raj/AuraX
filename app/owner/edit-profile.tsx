@@ -16,7 +16,8 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { getSalonById, updateSalonProfile } from '../../api/salon';
+import { getSalonById, updateSalonProfile, addSalonGalleryImage, removeSalonGalleryImage } from '../../api/salon';
+import api from '../../api/axiosInstance';
 import { getToken } from '../../api/storage';
 import { useSalon } from '../../context/SalonContext';
 import PlacesAutocompleteInput from '../../components/PlacesAutocomplete';
@@ -39,6 +40,8 @@ export default function EditSalonProfile() {
   const [locationSearchQuery, setLocationSearchQuery] = useState('');
   const [locationPredictions, setLocationPredictions] = useState([]);
   const locationPlacesInputRef = React.useRef(null);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [galleryUploading, setGalleryUploading] = useState(false);
 
   // Only fetch when salonId is available
   useEffect(() => {
@@ -71,6 +74,7 @@ export default function EditSalonProfile() {
       setOpeningTime(salonData.openingTime || '');
       setClosingTime(salonData.closingTime || '');
       setLocation(salonData.location || { lat: null, lng: null });
+      setGalleryImages(salonData.galleryImages || []);
       setLoading(false);
     } catch (err) {
       setError('Failed to fetch salon details.');
@@ -119,6 +123,53 @@ export default function EditSalonProfile() {
       setLocation({ lat: null, lng: null });
       locationPlacesInputRef.current?.clear();
       Alert.alert('Could not get location coordinates. Please try searching again.');
+    }
+  };
+
+  // Gallery image upload handler
+  const pickGalleryImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to make this work!');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+    if (!result.canceled) {
+      setGalleryUploading(true);
+      try {
+        // Upload image to backend
+        const formData = new FormData();
+        formData.append('image', {
+          uri: result.assets[0].uri,
+          name: 'gallery.jpg',
+          type: 'image/jpeg',
+        } as any);
+        const uploadRes = await api.post('/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        const imageUrl = uploadRes.data.url;
+        await addSalonGalleryImage(salonId, imageUrl);
+        setGalleryImages(prev => [...prev, imageUrl]);
+      } catch (err) {
+        Alert.alert('Error', 'Failed to upload image');
+      } finally {
+        setGalleryUploading(false);
+      }
+    }
+  };
+
+  // Delete gallery image
+  const handleDeleteGalleryImage = async (imageUrl: string) => {
+    try {
+      await removeSalonGalleryImage(salonId, imageUrl);
+      setGalleryImages(prev => prev.filter(url => url !== imageUrl));
+    } catch (err) {
+      Alert.alert('Error', 'Failed to delete image');
     }
   };
 
@@ -203,6 +254,27 @@ export default function EditSalonProfile() {
               <MaterialIcons name="camera-alt" size={24} color="#fff" />
             </View>
           </TouchableOpacity>
+        </View>
+        {/* Salon Gallery Section */}
+        <View style={styles.gallerySection}>
+          <Text style={styles.label}>Salon Gallery</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+            {galleryImages.map((img, idx) => (
+              <View key={img} style={styles.galleryImageWrapper}>
+                <Image source={{ uri: img }} style={styles.galleryImage} />
+                <TouchableOpacity style={styles.deleteGalleryImageBtn} onPress={() => handleDeleteGalleryImage(img)}>
+                  <MaterialIcons name="close" size={18} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            ))}
+            <TouchableOpacity style={styles.addGalleryImageBtn} onPress={pickGalleryImage} disabled={galleryUploading}>
+              {galleryUploading ? (
+                <ActivityIndicator color="#A65E5E" />
+              ) : (
+                <MaterialIcons name="add" size={32} color="#A65E5E" />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
         {/* Form Fields */}
         <View style={styles.formContainer}>
@@ -451,5 +523,43 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  gallerySection: {
+    paddingHorizontal: 18,
+    marginBottom: 18,
+  },
+  galleryImageWrapper: {
+    position: 'relative',
+    marginRight: 10,
+    marginBottom: 10,
+  },
+  galleryImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#A65E5E',
+  },
+  deleteGalleryImageBtn: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#A65E5E',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  addGalleryImageBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#A65E5E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F7E8E8',
   },
 }); 
