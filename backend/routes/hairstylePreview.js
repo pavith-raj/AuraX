@@ -3,7 +3,7 @@ const Replicate = require('replicate');
 const router = express.Router();
 
 const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN
+  auth: "r8_623ZCxHy5JNuEeveRUJ2hXqDxo7nkZF3NW0nQ"
 });
 
 router.post('/', async (req, res) => {

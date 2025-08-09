@@ -2,18 +2,116 @@ const express = require('express');
 const router = express.Router();
 const Salon = require('../models/salon');
 const { protect } = require('../middleware/authMiddleware');
-const { authorizeRoles } = require('../middleware/roleMiddleware');
 
-// fetch all salons from api/salons
+// Get all salons 
 router.get('/', async (req, res) => {
     try {
-        const salons = await Salon.find();
+        const salons = await Salon.find({}).sort({ rating: -1, createdAt: -1 });
         res.json(salons);
     } catch (err) {
+        console.error('GET /salons - Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
 
+
+
+// Get top 5 salons with rating >= 4
+router.get('/top', async (req, res) => {
+    try {
+        console.log('GET /salons/top - Starting query for top 5 salons with rating >= 4');
+        
+        const salons = await Salon.aggregate([
+            {
+                $match: { 
+                    rating: { $gte: 4 }
+                }
+            },
+            {
+                $addFields: {
+                    reviewCount: {
+                        $cond: {
+                            if: { $and: [
+                                { $ne: ["$reviews", null] },
+                                { $isArray: "$reviews" }
+                            ]},
+                            then: { $size: "$reviews" },
+                            else: 0
+                        }
+                    }
+                }
+            },
+            {
+                $sort: { rating: -1, reviewCount: -1 }
+            },
+            {
+                $limit: 5
+            },
+            {
+                // Project only the fields you need for the frontend
+                $project: {
+                    name: 1,
+                    email: 1,
+                    salonName: 1,
+                    salonAddress: 1,
+                    locationAddress: 1,
+                    location: 1,
+                    services: 1,
+                    rating: 1,
+                    openingTime: 1,
+                    closingTime: 1,
+                    profileImage: 1,
+                    galleryImages: 1,
+                    reviews: 1,
+                    reviewCount: 1
+                }
+            }
+        ]);
+
+        console.log('GET /salons/top - Query successful, found', salons.length, 'salons');
+        res.json(salons);
+    } catch (err) {
+        console.error('GET /salons/top - Error details:', err);
+        console.error('GET /salons/top - Error stack:', err.stack);
+        
+        // Fallback to simple query if aggregation fails
+        try {
+            console.log('Attempting fallback query...');
+            const fallbackSalons = await Salon.find({ 
+                rating: { $gte: 4 }
+            })
+            .sort({ rating: -1 })
+            .limit(5)
+            .lean();
+            
+            // Add review count in JavaScript
+            const salonsWithReviewCount = fallbackSalons.map(salon => ({
+                ...salon,
+                reviewCount: (salon.reviews && Array.isArray(salon.reviews)) ? salon.reviews.length : 0
+            }));
+            
+            // Sort by rating and review count
+            salonsWithReviewCount.sort((a, b) => {
+                if (b.rating !== a.rating) {
+                    return b.rating - a.rating;
+                }
+                return b.reviewCount - a.reviewCount;
+            });
+            
+            console.log('Fallback successful, found', salonsWithReviewCount.length, 'salons');
+            res.json(salonsWithReviewCount);
+        } catch (fallbackErr) {
+            console.error('Fallback also failed:', fallbackErr);
+            res.status(500).json({ 
+                error: 'Database query failed', 
+                originalError: err.message,
+                fallbackError: fallbackErr.message 
+            });
+        }
+    }
+});
+
+// Get a single salon by ID
 router.get('/:id', async (req, res) => {
     try {
         const salon = await Salon.findById(req.params.id);
@@ -22,234 +120,326 @@ router.get('/:id', async (req, res) => {
         }
         res.json(salon);
     } catch (err) {
+        console.error('GET /salons/:id - Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
 
-// Update salon profile
-router.put('/:id', protect, authorizeRoles('owner'), async (req, res) => {
+// Get reviews for a single salon
+router.get('/:id/reviews', async (req, res) => {
     try {
-        console.log('PUT /api/salons/:id called');
-        console.log('req.params.id:', req.params.id);
-        console.log('req.body:', req.body);
-        console.log('req.user:', req.user);
-        const { salonName, salonAddress, phone, openingTime, closingTime, profileImage } = req.body;
-        
+        const salon = await Salon.findById(req.params.id);
+        if (!salon) {
+            return res.status(404).json({ error: 'Salon not found' });
+        }
+        res.json(salon.reviews || []);
+    } catch (err) {
+        console.error('GET /salons/:id/reviews - Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Post a review for a salon
+router.post('/:id/reviews', protect, async (req, res) => {
+    try {
+        const { rating, text, images } = req.body;
         const salon = await Salon.findById(req.params.id);
         if (!salon) {
             return res.status(404).json({ error: 'Salon not found' });
         }
 
-        // Only allow the owner to update their own salon
-        if (String(salon._id) !== String(req.user._id)) {
-            return res.status(403).json({ error: 'Forbidden: You can only update your own salon' });
+        // Get user info from auth middleware
+        const userId = req.user.id;
+        const userName = req.user.name;
+
+        // Initialize reviews array if it doesn't exist
+        if (!salon.reviews) {
+            salon.reviews = [];
         }
 
-        // Update fields
-        if (salonName) salon.salonName = salonName;
-        if (salonAddress) salon.salonAddress = salonAddress;
-        if (phone) salon.phone = phone;
-        if (openingTime) salon.openingTime = openingTime;
-        if (closingTime) salon.closingTime = closingTime;
-        if (profileImage) salon.profileImage = profileImage;
+        // Create new review
+        const newReview = {
+            userId,
+            userName,
+            rating: rating || 0,
+            text: text || '',
+            images: images || [],
+            createdAt: new Date()
+        };
+
+        salon.reviews.push(newReview);
+
+        // Calculate new average rating
+        const totalRating = salon.reviews.reduce((sum, review) => sum + review.rating, 0);
+        salon.rating = totalRating / salon.reviews.length;
 
         await salon.save();
         res.json(salon);
     } catch (err) {
-        console.error('Error in PUT /api/salons/:id:', err);
-        res.status(500).json({ error: err.message || 'Internal server error' });
-    }
-});
-
-// Add a service
-router.post('/:salonId/services', async (req, res) => {
-  try {
-    console.log('POST /:salonId/services', req.params.salonId, req.body);
-    const { name, price, duration, description } = req.body;
-    const salon = await Salon.findById(req.params.salonId);
-    console.log('Salon found:', salon ? salon._id : null);
-    if (!salon) return res.status(404).json({ message: 'Salon not found' });
-    salon.services.push({ name, price, duration, description });
-    await salon.save();
-    res.json({ services: salon.services });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// Edit a service
-router.put('/:salonId/services/:serviceId', async (req, res) => {
-  try {
-    const { name, price, duration, description } = req.body;
-    const salon = await Salon.findById(req.params.salonId);
-    if (!salon) return res.status(404).json({ message: 'Salon not found' });
-    const service = salon.services.id(req.params.serviceId);
-    if (!service) return res.status(404).json({ message: 'Service not found' });
-    if (name !== undefined) service.name = name;
-    if (price !== undefined) service.price = price;
-    if (duration !== undefined) service.duration = duration;
-    if (description !== undefined) service.description = description;
-    await salon.save();
-    res.json({ services: salon.services });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// Delete a service
-router.delete('/:salonId/services/:serviceId', async (req, res) => {
-  try {
-    const salon = await Salon.findById(req.params.salonId);
-    if (!salon) return res.status(404).json({ message: 'Salon not found' });
-    salon.services.id(req.params.serviceId).remove();
-    await salon.save();
-    res.json({ services: salon.services });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// Add a gallery image to the salon
-router.post('/:id/gallery', protect, authorizeRoles('owner'), async (req, res) => {
-    try {
-        const { imageUrl } = req.body;
-        if (!imageUrl) return res.status(400).json({ error: 'imageUrl is required' });
-        const salon = await Salon.findById(req.params.id);
-        if (!salon) return res.status(404).json({ error: 'Salon not found' });
-        if (String(salon._id) !== String(req.user._id)) {
-            return res.status(403).json({ error: 'Forbidden: You can only update your own salon' });
-        }
-        salon.galleryImages.push(imageUrl);
-        await salon.save();
-        res.json({ galleryImages: salon.galleryImages });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Remove a gallery image from the salon
-router.delete('/:id/gallery', protect, authorizeRoles('owner'), async (req, res) => {
-    try {
-        const { imageUrl } = req.body;
-        if (!imageUrl) return res.status(400).json({ error: 'imageUrl is required' });
-        const salon = await Salon.findById(req.params.id);
-        if (!salon) return res.status(404).json({ error: 'Salon not found' });
-        if (String(salon._id) !== String(req.user._id)) {
-            return res.status(403).json({ error: 'Forbidden: You can only update your own salon' });
-        }
-        salon.galleryImages = salon.galleryImages.filter(url => url !== imageUrl);
-        await salon.save();
-        res.json({ galleryImages: salon.galleryImages });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Add a review to a salon
-router.post('/:id/reviews', protect, async (req, res) => {
-    try {
-        const { rating, text, images } = req.body;
-        if (!rating || rating < 1 || rating > 5) {
-            return res.status(400).json({ error: 'Rating must be between 1 and 5' });
-        }
-        const salon = await Salon.findById(req.params.id);
-        if (!salon) return res.status(404).json({ error: 'Salon not found' });
-        const review = {
-            userId: req.user._id,
-            userName: req.user.name,
-            rating,
-            text,
-            images: images || [],
-            createdAt: new Date()
-        };
-        salon.reviews.push(review);
-        // Update average rating
-        const ratings = salon.reviews.map(r => r.rating);
-        salon.rating = ratings.reduce((a, b) => a + b, 0) / ratings.length;
-        await salon.save();
-        res.status(201).json({ success: true, review });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Get all reviews for a salon
-router.get('/:id/reviews', async (req, res) => {
-    try {
-        const salon = await Salon.findById(req.params.id);
-        if (!salon) return res.status(404).json({ error: 'Salon not found' });
-        res.json(salon.reviews || []);
-    } catch (err) {
+        console.error('POST /salons/:id/reviews - Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
 
 // Edit a review
-router.put('/:salonId/reviews/:reviewId', protect, async (req, res) => {
+router.put('/:id/reviews/:reviewId', protect, async (req, res) => {
     try {
         const { rating, text, images } = req.body;
-        const salon = await Salon.findById(req.params.salonId);
-        if (!salon) return res.status(404).json({ error: 'Salon not found' });
-        const review = salon.reviews.id(req.params.reviewId);
-        if (!review) return res.status(404).json({ error: 'Review not found' });
-        if (String(review.userId) !== String(req.user._id)) {
-            return res.status(403).json({ error: 'You can only edit your own review' });
+        const salon = await Salon.findById(req.params.id);
+        if (!salon) {
+            return res.status(404).json({ error: 'Salon not found' });
         }
-        if (rating) review.rating = rating;
-        if (text !== undefined) review.text = text;
-        if (images) review.images = images;
-        review.createdAt = new Date();
-        // Update average rating
-        const ratings = salon.reviews.map(r => r.rating);
-        salon.rating = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+
+        // Find the review
+        const reviewIndex = salon.reviews.findIndex(review => review._id.toString() === req.params.reviewId);
+        if (reviewIndex === -1) {
+            return res.status(404).json({ error: 'Review not found' });
+        }
+
+        // Check if user owns this review
+        const userId = req.user.id;
+        if (salon.reviews[reviewIndex].userId.toString() !== userId) {
+            return res.status(403).json({ error: 'Not authorized to edit this review' });
+        }
+
+        // Update review
+        salon.reviews[reviewIndex] = {
+            ...salon.reviews[reviewIndex],
+            rating: rating !== undefined ? rating : salon.reviews[reviewIndex].rating,
+            text: text !== undefined ? text : salon.reviews[reviewIndex].text,
+            images: images !== undefined ? images : salon.reviews[reviewIndex].images
+        };
+
+        // Recalculate average rating
+        const totalRating = salon.reviews.reduce((sum, review) => sum + review.rating, 0);
+        salon.rating = totalRating / salon.reviews.length;
+
         await salon.save();
-        res.json({ success: true, review });
+        res.json(salon);
     } catch (err) {
+        console.error('PUT /salons/:id/reviews/:reviewId - Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
 
 // Delete a review
-router.delete('/:salonId/reviews/:reviewId', protect, async (req, res) => {
+router.delete('/:id/reviews/:reviewId', protect, async (req, res) => {
     try {
-        const salon = await Salon.findById(req.params.salonId);
-        if (!salon) return res.status(404).json({ error: 'Salon not found' });
-        const review = salon.reviews.id(req.params.reviewId);
-        if (!review) return res.status(404).json({ error: 'Review not found' });
-        if (String(review.userId) !== String(req.user._id)) {
-            return res.status(403).json({ error: 'You can only delete your own review' });
+        const salon = await Salon.findById(req.params.id);
+        if (!salon) {
+            return res.status(404).json({ error: 'Salon not found' });
         }
-        review.remove();
-        // Update average rating
-        const ratings = salon.reviews.map(r => r.rating);
-        salon.rating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
+
+        // Find the review
+        const reviewIndex = salon.reviews.findIndex(review => review._id.toString() === req.params.reviewId);
+        if (reviewIndex === -1) {
+            return res.status(404).json({ error: 'Review not found' });
+        }
+
+        // Check if user owns this review
+        const userId = req.user.id;
+        if (salon.reviews[reviewIndex].userId.toString() !== userId) {
+            return res.status(403).json({ error: 'Not authorized to delete this review' });
+        }
+
+        // Remove the review
+        salon.reviews.splice(reviewIndex, 1);
+
+        // Recalculate average rating
+        if (salon.reviews.length > 0) {
+            const totalRating = salon.reviews.reduce((sum, review) => sum + review.rating, 0);
+            salon.rating = totalRating / salon.reviews.length;
+        } else {
+            salon.rating = 0;
+        }
+
         await salon.save();
-        res.json({ success: true });
+        res.json(salon);
     } catch (err) {
+        console.error('DELETE /salons/:id/reviews/:reviewId - Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
 
-// Get all salons with rating >= 4 (Featured Salons)
-router.get('/featured', async (req, res) => {
+// Update salon profile image
+router.put('/:id/profile-image', async (req, res) => {
     try {
-        const salons = await Salon.find({ rating: { $gte: 4 } }).sort({ rating: -1 });
-        res.json(salons);
+        const { profileImage } = req.body;
+        const salon = await Salon.findByIdAndUpdate(
+            req.params.id,
+            { profileImage },
+            { new: true }
+        );
+        if (!salon) {
+            return res.status(404).json({ error: 'Salon not found' });
+        }
+        res.json(salon);
     } catch (err) {
+        console.error('PUT /salons/:id/profile-image - Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
 
-// Get top salons by rating and review count
-router.get('/top', async (req, res) => {
+// Update salon profile (general update)
+router.put('/:id', async (req, res) => {
     try {
-        const salons = await Salon.aggregate([
-            { $addFields: { reviewCount: { $size: { $ifNull: ["$reviews", []] } } } },
-            { $sort: { rating: -1, reviewCount: -1 } },
-            { $limit: 5 }
-        ]);
-        res.json(salons);
+        const updateData = req.body;
+        const salon = await Salon.findByIdAndUpdate(
+            req.params.id,
+            updateData,
+            { new: true }
+        );
+        if (!salon) {
+            return res.status(404).json({ error: 'Salon not found' });
+        }
+        res.json(salon);
     } catch (err) {
+        console.error('PUT /salons/:id - Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Add gallery image to salon
+router.post('/:id/gallery', async (req, res) => {
+    try {
+        const { imageUrl } = req.body;
+        const salon = await Salon.findById(req.params.id);
+        if (!salon) {
+            return res.status(404).json({ error: 'Salon not found' });
+        }
+        
+        // Initialize galleryImages array if it doesn't exist
+        if (!salon.galleryImages) {
+            salon.galleryImages = [];
+        }
+        
+        // Add the new image URL
+        salon.galleryImages.push(imageUrl);
+        await salon.save();
+        
+        res.json(salon);
+    } catch (err) {
+        console.error('POST /salons/:id/gallery - Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Remove gallery image from salon
+router.delete('/:id/gallery', async (req, res) => {
+    try {
+        const { imageUrl } = req.body;
+        const salon = await Salon.findById(req.params.id);
+        if (!salon) {
+            return res.status(404).json({ error: 'Salon not found' });
+        }
+        
+        // Remove the image URL from galleryImages array
+        if (salon.galleryImages) {
+            salon.galleryImages = salon.galleryImages.filter(url => url !== imageUrl);
+            await salon.save();
+        }
+        
+        res.json(salon);
+    } catch (err) {
+        console.error('DELETE /salons/:id/gallery - Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Add service to salon
+router.post('/:id/services', async (req, res) => {
+    try {
+        const { name } = req.body;
+        const salon = await Salon.findById(req.params.id);
+        if (!salon) {
+            return res.status(404).json({ error: 'Salon not found' });
+        }
+        
+        // Initialize services array if it doesn't exist
+        if (!salon.services) {
+            salon.services = [];
+        }
+        
+        // Add the new service with just the name
+        const newService = {
+            name: name || 'Unnamed Service'
+        };
+        
+        salon.services.push(newService);
+        await salon.save();
+        
+        res.json(salon);
+    } catch (err) {
+        console.error('POST /salons/:id/services - Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update service in salon
+router.put('/:id/services/:serviceId', async (req, res) => {
+    try {
+        const { name } = req.body;
+        const salon = await Salon.findById(req.params.id);
+        if (!salon) {
+            return res.status(404).json({ error: 'Salon not found' });
+        }
+        
+        // Find and update the specific service
+        const serviceIndex = salon.services.findIndex(service => service._id.toString() === req.params.serviceId);
+        if (serviceIndex === -1) {
+            return res.status(404).json({ error: 'Service not found' });
+        }
+        
+        // Update only the name field
+        salon.services[serviceIndex].name = name || salon.services[serviceIndex].name;
+        
+        await salon.save();
+        res.json(salon);
+    } catch (err) {
+        console.error('PUT /salons/:id/services/:serviceId - Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete service from salon
+router.delete('/:id/services/:serviceId', async (req, res) => {
+    try {
+        const salon = await Salon.findById(req.params.id);
+        if (!salon) {
+            return res.status(404).json({ error: 'Salon not found' });
+        }
+        
+        // Remove the specific service
+        salon.services = salon.services.filter(service => service._id.toString() !== req.params.serviceId);
+        await salon.save();
+        
+        res.json(salon);
+    } catch (err) {
+        console.error('DELETE /salons/:id/services/:serviceId - Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Debug route to check salon data
+router.get('/debug', async (req, res) => {
+    try {
+        console.log('Checking salon collection...');
+        
+        const totalCount = await Salon.countDocuments();
+        const withRatingCount = await Salon.countDocuments({ rating: { $exists: true, $ne: null } });
+        
+        const sampleSalon = await Salon.findOne();
+        
+        res.json({
+            totalSalons: totalCount,
+            salonsWithRating: withRatingCount,
+            sampleSalonFields: sampleSalon ? Object.keys(sampleSalon.toObject()) : null,
+            sampleRating: sampleSalon ? sampleSalon.rating : null,
+            sampleReviewsLength: sampleSalon && sampleSalon.reviews ? sampleSalon.reviews.length : 0
+        });
+        
+    } catch (err) {
+        console.error('Debug route error:', err);
         res.status(500).json({ error: err.message });
     }
 });

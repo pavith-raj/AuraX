@@ -10,6 +10,8 @@ export const getSalons = async () => {
     }
 };
 
+
+
 export const getSalonDetails = async (id) => {
     try {
         const response = await api.get(`/salons/${id}`);
@@ -98,6 +100,47 @@ export const getTopSalons = async () => {
         return response.data;
     } catch (error) {
         console.error('Failed to fetch top salons:', error);
+        throw error;
+    }
+};
+
+export const updateSalonProfileImage = async (salonId, profileImageUrl) => {
+    try {
+        const response = await api.put(`/salons/${salonId}/profile-image`, { profileImage: profileImageUrl });
+        return response.data;
+    } catch (error) {
+        console.error(`Failed to update salon profile image for id ${salonId}:`, error);
+        throw error;
+    }
+};
+
+// Service management functions
+export const addSalonService = async (salonId, serviceData) => {
+    try {
+        const response = await api.post(`/salons/${salonId}/services`, serviceData);
+        return response.data;
+    } catch (error) {
+        console.error(`Failed to add service for salon ${salonId}:`, error);
+        throw error;
+    }
+};
+
+export const updateSalonService = async (salonId, serviceId, serviceData) => {
+    try {
+        const response = await api.put(`/salons/${salonId}/services/${serviceId}`, serviceData);
+        return response.data;
+    } catch (error) {
+        console.error(`Failed to update service ${serviceId} for salon ${salonId}:`, error);
+        throw error;
+    }
+};
+
+export const deleteSalonService = async (salonId, serviceId) => {
+    try {
+        const response = await api.delete(`/salons/${salonId}/services/${serviceId}`);
+        return response.data;
+    } catch (error) {
+        console.error(`Failed to delete service ${serviceId} for salon ${salonId}:`, error);
         throw error;
     }
 };

@@ -16,11 +16,24 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { getSalonById, updateSalonProfile, addSalonGalleryImage, removeSalonGalleryImage } from '../../api/salon';
+import { getSalonById, updateSalonProfile, addSalonGalleryImage, removeSalonGalleryImage, updateSalonProfileImage } from '../../api/salon';
 import api from '../../api/axiosInstance';
 import { getToken } from '../../api/storage';
 import { useSalon } from '../../context/SalonContext';
 import PlacesAutocompleteInput from '../../components/PlacesAutocomplete';
+
+type PlacesAutocompleteInputHandle = {
+  setQueryText: (text: string) => void;
+  clear: () => void;
+  focus: () => void;
+  blur: () => void;
+};
+
+type GooglePlacePrediction = {
+  description: string;
+  place_id: string;
+  [key: string]: any;
+};
 
 export default function EditSalonProfile() {
   const router = useRouter();
@@ -38,8 +51,8 @@ export default function EditSalonProfile() {
   const [location, setLocation] = useState<{ lat: number | null; lng: number | null }>({ lat: null, lng: null });
   const [locationAddress, setLocationAddress] = useState('');
   const [locationSearchQuery, setLocationSearchQuery] = useState('');
-  const [locationPredictions, setLocationPredictions] = useState([]);
-  const locationPlacesInputRef = React.useRef(null);
+  const [locationPredictions, setLocationPredictions] = useState<GooglePlacePrediction[]>([]);
+  const locationPlacesInputRef = React.useRef<PlacesAutocompleteInputHandle>(null);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [galleryUploading, setGalleryUploading] = useState(false);
 
@@ -74,6 +87,7 @@ export default function EditSalonProfile() {
       setOpeningTime(salonData.openingTime || '');
       setClosingTime(salonData.closingTime || '');
       setLocation(salonData.location || { lat: null, lng: null });
+      setProfileImage(salonData.profileImage || 'https://via.placeholder.com/100');
       setGalleryImages(salonData.galleryImages || []);
       setLoading(false);
     } catch (err) {
@@ -89,18 +103,39 @@ export default function EditSalonProfile() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: 'images',
       allowsEditing: true,
       aspect: [1, 1],
       quality: 1,
     });
     if (!result.canceled) {
-      setProfileImage(result.assets[0].uri);
+      try {
+        // Upload image to backend immediately
+        const formData = new FormData();
+        formData.append('image', {
+          uri: result.assets[0].uri,
+          name: 'profile.jpg',
+          type: 'image/jpeg',
+        } as any);
+        const uploadRes = await api.post('/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        const imageUrl = uploadRes.data.url;
+        
+        // Update profile image in database
+        await updateSalonProfileImage(salonId, imageUrl);
+        
+        // Update local state
+        setProfileImage(imageUrl);
+        Alert.alert('Success', 'Profile image updated successfully');
+      } catch (err) {
+        Alert.alert('Error', 'Failed to upload profile image');
+      }
     }
   };
 
   // PlacesAutocomplete handlers
-  const handleLocationPredictionsReady = (predictions: any) => setLocationPredictions(predictions);
+  const handleLocationPredictionsReady = (predictions: GooglePlacePrediction[]) => setLocationPredictions(predictions);
   const handleLocationQueryChange = (query: string) => {
     setLocationSearchQuery(query);
     if (location.lat !== null || location.lng !== null) setLocation({ lat: null, lng: null });
@@ -112,7 +147,7 @@ export default function EditSalonProfile() {
     if (json.status === 'OK' && json.result) return json.result;
     return null;
   };
-  const handleLocationPredictionPress = async (item: any) => {
+  const handleLocationPredictionPress = async (item: GooglePlacePrediction) => {
     setLocationPredictions([]);
     const details = await fetchPlaceDetailsForLocation(item.place_id);
     if (details && details.geometry && details.geometry.location) {
@@ -134,7 +169,7 @@ export default function EditSalonProfile() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: 'images',
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,

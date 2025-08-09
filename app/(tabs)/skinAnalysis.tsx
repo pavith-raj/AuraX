@@ -118,7 +118,7 @@ export default function SkinAnalysis() {
     if (!hasPermission) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: 'images',
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -309,36 +309,71 @@ export default function SkinAnalysis() {
       {/* Analysis Results */}
       {analysisResult && (
         <View style={{ marginTop: 16 }}>
-          {/* Detected Result */}
-          <Text style={[styles.sectionTitle, { color: '#A65E5E', marginBottom: 4 }]}> 
-            Detected as: {conditionDescriptions[analysisResult.prediction?.toLowerCase()]?.name || analysisResult.prediction}
-          </Text>
-          {/* What is this condition? */}
-          <Text style={styles.sectionTitle}>
-            What is {conditionDescriptions[analysisResult.prediction?.toLowerCase()]?.name}?
-          </Text>
-          <Text style={styles.sectionDescription}>
-            {conditionDescriptions[analysisResult.prediction?.toLowerCase()]?.description}
-          </Text>
-          {/* Why did we detect this? */}
-          <Text style={styles.sectionTitle}>Why did we detect this?</Text>
-          <Text style={styles.sectionDescription}>
-            The AI detected features such as: {conditionDescriptions[analysisResult.prediction?.toLowerCase()]?.symptoms.join(', ')}.
-            {analysisResult.confidence_scores && analysisResult.prediction && (
-              `\nConfidence: ${Math.round(analysisResult.confidence_scores[analysisResult.prediction] * 100)}%`
-            )}
-          </Text>
-          {/* Show top features from the model */}
-          {analysisResult.top_features && (
-            <View style={{ marginTop: 8 }}>
-              <Text style={styles.sectionTitle}>Most Important Features for This Prediction:</Text>
-              {analysisResult.top_features.map((feat: any, idx: number) => (
-                <Text key={idx} style={styles.sectionDescription}>
-                  {feat.name} ({(feat.importance * 100).toFixed(2)}%)
+          {/* Confidence logic */}
+          {(() => {
+            const confidenceValue = analysisResult.confidence_scores?.[analysisResult.prediction?.toLowerCase()];
+            const isLowConfidence = typeof confidenceValue === 'number' && confidenceValue < 0.5;
+            return (
+              <>
+                {/* Detected Result */}
+                <Text style={[styles.sectionTitle, { color: '#A65E5E', marginBottom: 4 }]}> 
+                  {isLowConfidence
+                    ? 'No skin problem detected'
+                    : `Detected as: ${conditionDescriptions[analysisResult.prediction?.toLowerCase()]?.name || analysisResult.prediction}`}
                 </Text>
-              ))}
-            </View>
-          )}
+                {/* What is this condition? */}
+                {!isLowConfidence && (
+                  <>
+                    <Text style={styles.sectionTitle}>
+                      What is {conditionDescriptions[analysisResult.prediction?.toLowerCase()]?.name}?
+                    </Text>
+                    <Text style={styles.sectionDescription}>
+                      {conditionDescriptions[analysisResult.prediction?.toLowerCase()]?.description}
+                    </Text>
+                  </>
+                )}
+                {/* Why did we detect this? */}
+                <Text style={styles.sectionTitle}>Why did we detect this?</Text>
+                <Text style={styles.sectionDescription}>
+                  {isLowConfidence
+                    ? 'The AI did not detect any significant skin problems.'
+                    : `The AI detected features such as: ${conditionDescriptions[analysisResult.prediction?.toLowerCase()]?.symptoms.join(', ')}.`}
+                  {analysisResult.confidence_scores && analysisResult.prediction && (
+                    typeof confidenceValue === 'number'
+                      ? `\nConfidence: ${Math.round(confidenceValue * 100)}%`
+                      : '\nConfidence: N/A'
+                  )}
+                </Text>
+                {/* Show top features from the model */}
+                {analysisResult.top_features && !isLowConfidence && (
+                  <View style={{ marginTop: 8 }}>
+                    <Text style={styles.sectionTitle}>Most Important Features for This Prediction:</Text>
+                    {analysisResult.top_features.map((feat: any, idx: number) => (
+                      <Text key={idx} style={styles.sectionDescription}>
+                        {feat.name} ({(feat.importance * 100).toFixed(2)}%)
+                      </Text>
+                    ))}
+                  </View>
+                )}
+                {/* Report Button */}
+                {!isLowConfidence && (
+                  <TouchableOpacity
+                    style={{
+                      marginTop: 12,
+                      alignSelf: 'center',
+                      backgroundColor: '#A65E5E',
+                      borderRadius: 20,
+                      paddingHorizontal: 24,
+                      paddingVertical: 10,
+                    }}
+                    onPress={() => setFeedbackModalVisible(true)}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>Report Incorrect Prediction</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            );
+          })()}
         </View>
       )}
 

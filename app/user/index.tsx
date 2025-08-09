@@ -8,7 +8,7 @@ import BottomNavBar from '../../components/BottomNav';
 import { getMyQueueStatus } from '../../api/apiService';
 import { useFocusEffect } from '@react-navigation/native';
 import { AuthContext } from '../../context/AuthContext';
-import { getTopSalons } from '../../api/salon';
+import { getSalons, getTopSalons } from '../../api/salon';
 
 const GOOGLE_API_KEY = 'AIzaSyD9AOX5rjhxoThJDlVYPtkCtLNg7Vivpls';
 
@@ -38,6 +38,12 @@ export default function HomePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [topSalons, setTopSalons] = useState<any[]>([]);
   const [topLoading, setTopLoading] = useState(true);
+
+  // Add state for search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [allSalons, setAllSalons] = useState<any[]>([]);
 
   // Fetch queue status function
   const fetchQueueStatus = async () => {
@@ -92,11 +98,46 @@ export default function HomePage() {
   );
 
   useEffect(() => {
-    getTopSalons()
-      .then(data => setTopSalons(data))
-      .catch(() => setTopSalons([]))
-      .finally(() => setTopLoading(false));
+    getSalons()
+      .then(data => setAllSalons(data))
+      .catch(() => setAllSalons([]));
   }, []);
+
+  // Fetch top salons
+  useEffect(() => {
+    const fetchTopSalons = async () => {
+      try {
+        setTopLoading(true);
+        const data = await getTopSalons();
+        setTopSalons(data);
+      } catch (error) {
+        console.error('Failed to fetch top salons:', error);
+        setTopSalons([]);
+      } finally {
+        setTopLoading(false);
+      }
+    };
+
+    fetchTopSalons();
+  }, []);
+
+  // Search logic
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setSearchResults([]);
+      return;
+    }
+    setSearchLoading(true);
+    // Filter salons by name or address
+    const filtered = allSalons.filter((salon) => {
+      const name = (salon.salonName || salon.name || '').toLowerCase();
+      const address = (salon.salonAddress || '').toLowerCase();
+      const q = searchQuery.toLowerCase();
+      return name.includes(q) || address.includes(q);
+    });
+    setSearchResults(filtered);
+    setSearchLoading(false);
+  }, [searchQuery, allSalons]);
 
   // Fetch predictions from Google Places API
   const fetchPredictions = async (input: string) => {
@@ -142,8 +183,57 @@ export default function HomePage() {
           style={styles.searchInput}
           placeholder="Search salons or services"
           placeholderTextColor="#888"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
         />
       </View>
+      {/* Search Results Dropdown */}
+      {searchQuery.trim() !== '' && (
+        <View style={{
+          position: 'absolute',
+          top: 90,
+          left: 0,
+          right: 0,
+          zIndex: 10,
+          backgroundColor: '#fff',
+          borderBottomLeftRadius: 12,
+          borderBottomRightRadius: 12,
+          maxHeight: 250,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 5,
+          marginHorizontal: 12,
+          marginTop: 2,
+        }}>
+          {searchLoading ? (
+            <ActivityIndicator color="#A65E5E" style={{ margin: 16 }} />
+          ) : searchResults.length === 0 ? (
+            <Text style={{ color: '#888', textAlign: 'center', padding: 16 }}>No results found.</Text>
+          ) : (
+            <FlatList
+              data={searchResults}
+              keyExtractor={item => item._id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#eee' }}
+                  onPress={() => {
+                    setSearchQuery('');
+                    setSearchResults([]);
+                    router.push(`/user/salons/details?id=${item._id}`);
+                  }}
+                >
+                  <Text style={{ fontWeight: 'bold', color: '#A65E5E' }}>{item.salonName || item.name}</Text>
+                  <Text style={{ color: '#888', fontSize: 12 }}>{item.salonAddress}</Text>
+                </TouchableOpacity>
+              )}
+              keyboardShouldPersistTaps="handled"
+              style={{ maxHeight: 250 }}
+            />
+          )}
+        </View>
+      )}
 
       {/* Location Dropdown */}
       <TouchableOpacity
@@ -311,7 +401,12 @@ export default function HomePage() {
                     onPress={() => router.push(`/user/salons/details?id=${salon._id}`)}
                     activeOpacity={0.85}
                   >
-                    <Image source={{ uri: salon.profileImage || 'https://via.placeholder.com/120' }} style={styles.salonImage} />
+                    <Image 
+                      source={salon.profileImage ? { uri: salon.profileImage } : require('../../assets/images/salon1.jpg')}
+                      style={styles.salonImage}
+                      defaultSource={require('../../assets/images/salon1.jpg')}
+                      onError={() => console.log('Failed to load salon image for:', salon.salonName)}
+                    />
                     <View style={styles.salonInfo}>
                       <Text style={styles.salonName}>{salon.salonName || salon.name}</Text>
                       <Text style={styles.salonLocation}>{salon.salonAddress}</Text>

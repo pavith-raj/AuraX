@@ -31,7 +31,6 @@ const salonSchema = new mongoose.Schema({
 
   // Other fields
   role: { type: String, default: 'owner' },
-  isApproved: { type: Boolean, default: false },
   profileImage: { type: String, default: '' },
   galleryImages: { type: [String], default: [] },
   reviews: [{

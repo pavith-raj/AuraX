@@ -1,13 +1,27 @@
-import React, { useState, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, forwardRef, useImperativeHandle, RefObject } from 'react';
 import { View, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
 
 
 const GOOGLE_API_KEY = 'AIzaSyD9AOX5rjhxoThJDlVYPtkCtLNg7Vivpls'; 
 
-const PlacesAutocompleteInput = forwardRef(({ onQueryChange, onPredictionsReady, initialQuery = '' }, ref) => {
+type PlacesAutocompleteInputHandle = {
+  setQueryText: (text: string) => void;
+  clear: () => void;
+  focus: () => void;
+  blur: () => void;
+};
+
+type PlacesAutocompleteInputProps = {
+  onQueryChange: (query: string) => void;
+  onPredictionsReady: (predictions: any) => void;
+  initialQuery?: string;
+};
+
+const PlacesAutocompleteInput = React.forwardRef<PlacesAutocompleteInputHandle, PlacesAutocompleteInputProps>(
+  ({ onQueryChange, onPredictionsReady, initialQuery = '' }, ref) => {
     const [query, setQuery] = useState(initialQuery);
     const [isFetching, setIsFetching] = useState(false);
-    const textInputRef = React.useRef(null);
+    const textInputRef = React.useRef<TextInput>(null);
 
     // Expose methods to parent via useImperativeHandle
     useImperativeHandle(ref, () => ({
@@ -32,7 +46,7 @@ const PlacesAutocompleteInput = forwardRef(({ onQueryChange, onPredictionsReady,
         }
     }));
 
-    const fetchPredictions = async (input) => {
+    const fetchPredictions = async (input: string) => {
         setQuery(input);
         onQueryChange(input); // Notify parent about query change
 

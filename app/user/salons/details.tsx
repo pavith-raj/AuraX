@@ -78,7 +78,7 @@ export default function SalonDetails() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: 'images',
       allowsMultipleSelection: true,
       quality: 1,
     });
@@ -181,9 +181,11 @@ export default function SalonDetails() {
             {/* Salon Profile Image */}
             <View style={styles.imageWrapper}>
               <Image
-                source={{ uri: salon.profileImage || 'https://via.placeholder.com/120' }}
+                source={salon.profileImage ? { uri: salon.profileImage } : require('../../../assets/images/salon1.jpg')}
                 style={styles.image}
                 resizeMode="cover"
+                defaultSource={require('../../../assets/images/salon1.jpg')}
+                onError={() => console.log('Failed to load salon image for:', salon.salonName)}
               />
             </View>
             <Text style={styles.salonName}>{salon.salonName}</Text>

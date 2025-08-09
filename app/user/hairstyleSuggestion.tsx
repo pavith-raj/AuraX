@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, ScrollView, TextInput, Alert, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, ScrollView, TextInput, SafeAreaView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import axios from 'axios';
 import api from '../../api/axiosInstance';
 
 type FaceShape = 'oval' | 'round' | 'square' | 'heart' | 'diamond';
@@ -32,11 +31,21 @@ const recommendations: Record<FaceShape, Record<Gender, string[]>> = {
   },
 };
 
+const UNSPLASH_ACCESS_KEY = 'bx2Cy-GqfLO6sHKdkb4r12blbXJbagT8zI-z_g3GH-8';
+
+  const fetchHairstyleImage = async (hairstyle: string) => {
+    const response = await fetch(
+      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(hairstyle)}&client_id=${UNSPLASH_ACCESS_KEY}`
+    );
+    const data = await response.json();
+    return data.results[0]?.urls?.small || null;
+  };
+
 export default function HairstyleSuggestion() {
   const [image, setImage] = useState<string | null>(null);
   const [aiResultUrl, setAiResultUrl] = useState<string | null>(null);
   const [selectedHairstyle, setSelectedHairstyle] = useState<string>('');
-  const [color, setColor] = useState<string>('');
+ 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [faceShape, setFaceShape] = useState<string>('');
@@ -51,7 +60,7 @@ export default function HairstyleSuggestion() {
       setError('Permission to access gallery is required!');
       return;
     }
-    let pickerResult = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 });
+    let pickerResult = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 1 });
     if (!pickerResult.canceled && pickerResult.assets && pickerResult.assets.length > 0) {
       setImage(pickerResult.assets[0].uri);
       setAiResultUrl(null);
@@ -80,28 +89,59 @@ export default function HairstyleSuggestion() {
     }
   };
 
-  // Helper to upload image to a public image host (imgur, cloudinary, etc.)
-  // For demo, this is a placeholder. You must implement your own image upload logic.
-  const uploadImageAndGetUrl = async (localUri: string): Promise<string> => {
-    const data = new FormData();
-    data.append('image', {
-      uri: localUri,
-      type: 'image/jpeg',
-      name: 'upload.jpg',
-    } as any);
+  // // Helper to upload image to a public image host (imgur, cloudinary, etc.)
+  // // For demo, this is a placeholder. You must implement your own image upload logic.
+  // const uploadImageAndGetUrl = async (localUri: string): Promise<string> => {
+  //   const data = new FormData();
+  //   data.append('image', {
+  //     uri: localUri,
+  //     type: 'image/jpeg',
+  //     name: 'upload.jpg',
+  //   } as any);
 
-    const res = await api.post('/upload', data, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    if (res.data && res.data.url) {
-      return res.data.url;
-    } else {
-      throw new Error('Failed to upload image to server');
+  //   const res = await api.post('/upload', data, {
+  //     headers: {
+  //       'Content-Type': 'multipart/form-data',
+  //     },
+  //   });
+  //   if (res.data && res.data.url) {
+  //     return res.data.url;
+  //   } else {
+  //     throw new Error('Failed to upload image to server');
+  //   }
+  // };
+
+    const onSelectHairstyle = async (h: string) => {
+    setSelectedHairstyle(h);
+    setLoading(true);
+    setError('');
+    try {
+      const url = await fetchHairstyleImage(h);
+      setAiResultUrl(url);
+    } catch (e) {
+      setError('Failed to fetch hairstyle image.');
+    } finally {
+      setLoading(false);
     }
   };
 
+  const onViewOrRefreshImage = async (): Promise<void> => {
+    if (!selectedHairstyle) {
+      setError('Select or type a hairstyle first.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      const url = await fetchHairstyleImage(selectedHairstyle);
+      if (!url) setError('No image found for this hairstyle.');
+      setAiResultUrl(url || null);
+    } catch {
+      setError('Failed to load image.');
+    } finally {
+      setLoading(false);
+    }
+  };
   // Analyze image to get face shape and gender
   const analyzeImage = async (imgUri: string) => {
     setUploading(true);
@@ -134,34 +174,37 @@ export default function HairstyleSuggestion() {
     }
   };
 
-  const generateHairstyle = async () => {
-    if (!image || !selectedHairstyle) {
-      setError('Please select an image and a hairstyle.');
-      return;
-    }
-    setLoading(true);
-    setError('');
-    setAiResultUrl(null);
-    try {
-      // 1. Upload the image to get a public URL
-      const imageUrl = await uploadImageAndGetUrl(image);
-      // 2. Call your backend API
-      const res = await api.post('/hairstyle-preview', {
-        imageUrl,
-        hairstyle: selectedHairstyle,
-        color,
-      });
-      if (res.data && res.data.result) {
-        setAiResultUrl(res.data.result);
-      } else {
-        setError('No result from AI API.');
-      }
-    } catch (e: any) {
-      setError(e.message || 'Failed to generate hairstyle preview.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const generateHairstyle = async () => {
+  //   if (!image || !selectedHairstyle) {
+  //     setError('Please select an image and a hairstyle.');
+  //     return;
+  //   }
+  //   setLoading(true);
+  //   setError('');
+  //   setAiResultUrl(null);
+  //   try {
+  //     // 1. Upload the image to get a public URL
+  //     const imageUrl = await uploadImageAndGetUrl(image);
+  //     // 2. Call your backend API
+  //     const res = await api.post('/hairstyle-preview', {
+  //       imageUrl,
+  //       hairstyle: selectedHairstyle,
+  //       color,
+  //     });
+  //     if (res.data && res.data.result) {
+  //       setAiResultUrl(res.data.result);
+  //     } else {
+  //       setError('No result from AI API.');
+  //     }
+  //   } catch (e: any) {
+  //     setError(e.message || 'Failed to generate hairstyle preview.');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+
+  
 
   let hairstyleList: string[] = [];
   if (
@@ -180,10 +223,10 @@ export default function HairstyleSuggestion() {
           <TouchableOpacity onPress={() => router.back()} style={styles.headerBackBtn}>
             <Feather name="arrow-left" size={24} color="#A65E5E" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>AI Hairstyle Suggestions</Text>
+          <Text style={styles.headerTitle}>Hairstyle Suggestions</Text>
           <View style={{ width: 24 }} />
         </View>
-        <Text style={styles.subtitle}>Upload or capture your photo to get face-based hairstyle suggestions and AI preview!</Text>
+        <Text style={styles.subtitle}>Upload or capture your photo to get face-based hairstyle suggestions and hairstyle Images</Text>
         <View style={styles.imageSection}>
           {image ? (
             <Image source={{ uri: image }} style={styles.imagePreview} />
@@ -212,7 +255,7 @@ export default function HairstyleSuggestion() {
                 <TouchableOpacity
                   key={i}
                   style={selectedHairstyle === h ? styles.selectedHairstyle : styles.suggestionItemBtn}
-                  onPress={() => setSelectedHairstyle(h)}
+                  onPress={() => onSelectHairstyle(h)}
                 >
                   <Text style={selectedHairstyle === h ? styles.selectedHairstyleText : styles.suggestionItem}>{h}</Text>
                 </TouchableOpacity>
@@ -228,19 +271,26 @@ export default function HairstyleSuggestion() {
           value={selectedHairstyle}
           onChangeText={setSelectedHairstyle}
         />
-        <TextInput
-          style={styles.input}
-          placeholder="Hair color (optional)"
-          value={color}
-          onChangeText={setColor}
-        />
-        <TouchableOpacity style={styles.generateButton} onPress={generateHairstyle} disabled={loading || !selectedHairstyle}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.generateText}>Generate AI Preview</Text>}
+        <TouchableOpacity
+          style={styles.generateButton}
+          onPress={onViewOrRefreshImage}
+          disabled={loading || !selectedHairstyle}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.generateText}>
+              {aiResultUrl ? 'Refresh Image' : 'View Hairstyle Image'}
+            </Text>
+          )}
         </TouchableOpacity>
+        {/* <TouchableOpacity style={styles.generateButton} onPress={generateHairstyle} disabled={loading || !selectedHairstyle}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.generateText}>Generate AI Preview</Text>}
+        </TouchableOpacity> */}
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {aiResultUrl && (
           <View style={styles.generatedImageSection}>
-            <Text style={styles.generatedImageTitle}>AI Hairstyle Preview:</Text>
+            <Text style={styles.generatedImageTitle}>Hairstyle Images:</Text>
             <Image source={{ uri: aiResultUrl }} style={styles.generatedImage} />
           </View>
         )}

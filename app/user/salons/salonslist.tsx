@@ -124,8 +124,10 @@ export default function SalonList() {
     >
       <View style={styles.rowAlign}>
         <Image
-          source={{ uri: salon.profileImage || 'https://via.placeholder.com/80' }}
+          source={salon.profileImage ? { uri: salon.profileImage } : require('../../../assets/images/salon1.jpg')}
           style={styles.salonProfileImage}
+          defaultSource={require('../../../assets/images/salon1.jpg')}
+          onError={() => console.log('Failed to load salon image for:', salon.salonName || salon.name)}
         />
         <Text style={styles.salonName}>{salon.salonName || salon.name}</Text>
       </View>
