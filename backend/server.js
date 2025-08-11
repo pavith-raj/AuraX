@@ -13,7 +13,7 @@ const skinAnalysisRoutes = require('./skinAnalysis');
 const queueRoutes = require('./routes/queue');
 const productsRoutes = require('./routes/products');
 const faceAnalysisRoutes = require('./routes/faceAnalysis');
-const hairstylePreviewRoutes = require('./routes/hairstylePreview');
+
 const uploadRoutes = require('./routes/upload');
 
 
@@ -41,7 +41,7 @@ app.use('/api/skin', skinAnalysisRoutes);
 app.use('/api/queue', queueRoutes);
 app.use('/api/products', productsRoutes);
 app.use('/api/face-analysis', faceAnalysisRoutes);
-app.use('/api/hairstyle-preview', hairstylePreviewRoutes);
+
 app.use('/api/upload', uploadRoutes);
 
 // Serve static files from the uploads directory
